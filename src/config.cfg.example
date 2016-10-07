@@ -4,7 +4,7 @@ DEBUG=false
 ; Log console output to a file
 LOGGING=false
 
-; Path to images directory (should be an absolute path!)
+; Path to images directory (should be an absolute path)
 PATH_IMAGES="images/"
 
 ; Enable searching by MD5
@@ -19,5 +19,5 @@ USE_PHPWFIO=true
 ; Output HTML
 OUTPUT_HTML=true
 
-; HTML file to output to
-OUTPUT_HTML_FILE="links.html"
+; HTML file to output to (should be an absolute path)
+OUTPUT_HTML_FILE="images/found/links.html"
