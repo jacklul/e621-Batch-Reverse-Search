@@ -783,7 +783,7 @@ class App {
                             file_put_contents($this->PATH_LOGS . '/error_' . date("Ymd\_His") . '.txt', "iqdb.harry.lu server reply:\n\n" . $results);
                         }
 
-                        $this->printout("WARNING: Unhandled error occurred! Turn on DEBUG mode or LOGGING to see more detail.\n");
+                        $this->printout("WARNING: Unhandled error occurred! Turn on DEBUG mode or LOGGING to see more details.\n");
                     }
                 }
 
