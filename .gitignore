@@ -1,0 +1,21 @@
+# IDE stuff
+.buildpath
+.project
+.settings
+.idea
+.phpintel
+
+# Build directory
+build/*
+!build/.gitkeep
+
+# Composer
+composer.phar
+composer.lock
+vendor/
+
+# OSX
+.DS_Store
+.Trashes
+.Spotlight-V100
+._*
