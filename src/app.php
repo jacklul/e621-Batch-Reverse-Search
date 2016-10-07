@@ -331,8 +331,8 @@ class App {
             $REMOTE_DOWNLOAD = $update_check['assets'][0]['browser_download_url'];
 
             if ($REMOTE_VERSION !== "" && !empty($REMOTE_DOWNLOAD)) {
-                $update_file = realpath("./") . "update.zip";
-                $update_file_html = realpath("./") . "update.html";
+                $update_file = ROOT . "/update.zip";
+                $update_file_html = ROOT . "/update.html";
 
                 if (version_compare($this->VERSION, $REMOTE_VERSION, '<')) {
                     $this->printout(" update available (v" . $REMOTE_VERSION . ")\n");
@@ -376,10 +376,13 @@ class App {
                         if (isset($blob) && strpos($blob, 'PK') !== false) {
                             $this->printout(" done!\n");
                             $this->printout("Unpacking...");
-                            $zip = new \ZipArchive;
 
-                            if ($zip->open($update_file) === true) {
-                                $zip->extractTo(realpath("./"));
+                            if (class_exists("ZipArchive")) {
+                                $zip = new \ZipArchive;
+                            }
+
+                            if (is_object($zip) && $zip->open($update_file) === true) {
+                                $zip->extractTo(ROOT);
                                 $zip->close();
                                 $this->printout(" done!\n\n");
                                 unlink($update_file);
