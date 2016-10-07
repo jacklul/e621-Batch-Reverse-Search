@@ -12,8 +12,8 @@ try {
         $app->setImagesPath($argv[1]);
     }
 
-    if (file_exists(realpath("config.cfg"))) {
-        $app->readConfig(realpath("config.cfg"));
+    if (file_exists(ROOT . "/config.cfg")) {
+        $app->readConfig(ROOT . "/config.cfg");
     }
 
     $app->run();

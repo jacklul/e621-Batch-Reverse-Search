@@ -11,6 +11,8 @@
 
 namespace jacklul\e621BRS;
 
+define("ROOT", dirname(str_replace("phar://", "", __DIR__)));
+
 /**
  * Class App
  */
@@ -20,14 +22,14 @@ class App {
      *
      * @var string
      */
-    private $VERSION = '1.0.0';
+    private $VERSION = '1.0.1';
 
     /**
      * App Name
      *
      * @var string
      */
-    private $NAME = 'e621 Batch Reverse Search Script';
+    private $NAME = 'e621 Batch Reverse Search';
 
     /**
      * Update URL
@@ -84,35 +86,35 @@ class App {
      *
      * @var string
      */
-    private $OUTPUT_HTML_FILE = 'images/found/links.html';
+    private $OUTPUT_HTML_FILE = ROOT . '/images/found/links.html';
 
     /**
      * Path to logs directory
      *
      * @var string
      */
-    private $PATH_LOGS = 'logs/';
+    private $PATH_LOGS = ROOT . '/logs/';
 
     /**
      * Path to images directory
      *
      * @var string
      */
-    private $PATH_IMAGES = 'images/';
+    private $PATH_IMAGES = ROOT . '/images/';
 
     /**
      * Path to found directory
      *
      * @var string
      */
-    private $PATH_IMAGES_FOUND = 'images/found/';
+    private $PATH_IMAGES_FOUND = ROOT . '/images/found/';
 
     /**
      * Path to 'not found' directory
      *
      * @var string
      */
-    private $PATH_IMAGES_NOT_FOUND = 'images/not found/';
+    private $PATH_IMAGES_NOT_FOUND = ROOT . '/images/not found/';
 
     /**
      * Is custom path set (via script argument)
@@ -249,11 +251,11 @@ class App {
             }
 
             if (isset($config['PATH_LOGS'])) {
-                $this->PATH_LOGS = $config['PATH_LOGS'];
+                $this->PATH_LOGS = realpath($config['PATH_LOGS']);
             }
 
             if (isset($config['PATH_IMAGES']) && !$this->CUSTOM_PATH) {
-                $this->PATH_IMAGES = $config['PATH_IMAGES'];
+                $this->PATH_IMAGES = realpath($config['PATH_IMAGES']);
             }
 
             if (isset($config['MD5_SEARCH'])) {
@@ -269,7 +271,7 @@ class App {
             }
 
             if (isset($config['OUTPUT_HTML_FILE'])) {
-                $this->OUTPUT_HTML_FILE = $config['OUTPUT_HTML_FILE'];
+                $this->OUTPUT_HTML_FILE = realpath(dirname($config['OUTPUT_HTML_FILE'])) . '/' . basename($config['OUTPUT_HTML_FILE']);
             } else {
                 $this->OUTPUT_HTML_FILE = $this->PATH_IMAGES_FOUND . '/links.html';
             }
@@ -441,6 +443,10 @@ class App {
             mkdir($this->PATH_IMAGES_NOT_FOUND);
         }
 
+        if (!is_dir($this->PATH_LOGS) || !is_writable($this->PATH_LOGS)) {
+            $this->PATH_LOGS = ROOT . '/' . $this->PATH_LOGS;
+        }
+
         if ($this->LOGGING && !is_dir($this->PATH_LOGS)) {
             mkdir($this->PATH_LOGS);
         }
@@ -454,13 +460,13 @@ class App {
         }
 
         if ($this->USE_PHPWFIO) {
-            $this->PATH_IMAGES = "wfio://" . realpath($this->PATH_IMAGES);
-            $this->PATH_IMAGES_FOUND = "wfio://" . realpath($this->PATH_IMAGES_FOUND);
-            $this->PATH_IMAGES_NOT_FOUND = "wfio://" . realpath($this->PATH_IMAGES_NOT_FOUND);
-        } else {
-            $this->PATH_IMAGES = realpath($this->PATH_IMAGES);
-            $this->PATH_IMAGES_FOUND = realpath($this->PATH_IMAGES_FOUND);
-            $this->PATH_IMAGES_NOT_FOUND = realpath($this->PATH_IMAGES_NOT_FOUND);
+            $this->PATH_IMAGES = "wfio://" . $this->PATH_IMAGES;
+            $this->PATH_IMAGES_FOUND = "wfio://" . $this->PATH_IMAGES_FOUND;
+            $this->PATH_IMAGES_NOT_FOUND = "wfio://" . $this->PATH_IMAGES_NOT_FOUND;
+        }
+
+        if (file_exists(ROOT . '/tempfile')) {
+            unlink(ROOT . '/tempfile');
         }
 
         $this->PATH_LOGS = realpath($this->PATH_LOGS);
@@ -501,13 +507,13 @@ class App {
     private function reverseSearch($file)
     {
         if ($this->USE_PHPWFIO) {
-            copy($file, realpath("./") . '/tempfile');
+            copy($file, ROOT . '/tempfile');
         }
 
         $post_data = [];
 
         if ($this->USE_PHPWFIO) {
-            $post_data['file'] = new \CurlFile(realpath("./") . '/tempfile', mime_content_type($file), basename($file));
+            $post_data['file'] = new \CurlFile(ROOT . '/tempfile', mime_content_type($file), basename($file));
         } else {
             $post_data['file'] = new \CurlFile($file, mime_content_type($file), basename($file));
         }
@@ -531,7 +537,7 @@ class App {
         $output = curl_exec($ch);
 
         if ($this->USE_PHPWFIO) {
-            unlink(realpath("./") . '/tempfile');
+            unlink(ROOT . '/tempfile');
         }
 
         if ($this->DEBUG) {
@@ -597,12 +603,12 @@ class App {
     /**
      * Main function
      *
-     * @throws Exception
+     * @throws \Exception
      */
     private function main()
     {
         if ($this->CUSTOM_PATH) {
-            $this->printout("Using path: " . $this->PATH_IMAGES . "\n\n");
+            $this->printout("Using path: " . str_replace("wfio://", "", $this->PATH_IMAGES) . "\n\n");
         }
 
         if (!extension_loaded("wfio") && strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
@@ -614,6 +620,7 @@ class App {
         $files_error = [];
         $files_count = 0;
         $files_total = 0;
+        $found = 0;
 
         if (is_dir($this->PATH_IMAGES)) {
             $this->printout("Scanning for images...");
@@ -664,10 +671,9 @@ class App {
 
             $this->printout("\n");
 
-            $found = 0;
-
             foreach ($files as $entry) {
-                $this->printout('[' . ($files_count + 1) . "/$files_total] Searching '" . (($this->USE_PHPWFIO) ? utf8_decode($entry):$entry) . "':\n");
+                $files_count++;
+                $this->printout('[' . ($files_count) . "/$files_total] Searching '" . (($this->USE_PHPWFIO) ? utf8_decode($entry):$entry) . "':\n");
 
                 if ($this->MD5_SEARCH) {
                     $this->OUTPUT_BUFFER = " Trying md5 sum...";
@@ -753,14 +759,19 @@ class App {
                 } elseif ($this->REVERSE_SEARCH) {
                     $this->printout(" failed!\n");
 
-                    if ($this->DEBUG || $this->LOGGING) {
-                        file_put_contents($this->PATH_LOGS . '/error_' . date("Ymd\_His") . '.txt', "iqdb.harry.lu server reply:\n\n" . $results);
+                    if ($this->DEBUG) {
+                        file_put_contents(ROOT . '/debug_error.txt', "iqdb.harry.lu server reply:\n\n" . $results);
                         throw new \Exception("Unhandled error occurred! (check 'error.txt' and contact the developer)");
+                    } else {
+                        if ($this->LOGGING) {
+                            file_put_contents($this->PATH_LOGS . '/error_' . date("Ymd\_His") . '.txt', "iqdb.harry.lu server reply:\n\n" . $results);
+                        }
+
+                        $this->printout("WARNING: Unhandled error occurred! Turn on DEBUG mode or LOGGING to see more detail.\n");
                     }
                 }
 
                 $this->printout("\n");
-                $files_count++;
             }
 
             if ($files_total > 0) {
@@ -770,6 +781,8 @@ class App {
             $this->printout("Finished in " . round(microtime(true) - $this->START_TIME, 3) . " seconds.\n\n");
 
             closedir($handle);
+        } else {
+            throw new \Exception("Path '$this->PATH_IMAGES' is invalid! This error shouldn't happen!\n\n");
         }
     }
 }
