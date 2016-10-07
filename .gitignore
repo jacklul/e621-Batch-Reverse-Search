@@ -5,7 +5,9 @@
 .idea
 .phpintel
 
-# Build directory
+# Build
+build.zip
+build_template.zip
 build/*
 !build/.gitkeep
 
