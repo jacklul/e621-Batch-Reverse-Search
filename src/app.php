@@ -22,7 +22,7 @@ class App {
      *
      * @var string
      */
-    private $VERSION = '1.0.1';
+    private $VERSION = '1.0.2';
 
     /**
      * App Name
@@ -46,11 +46,39 @@ class App {
     private $DEBUG = false;
 
     /**
+     * Path to images directory
+     *
+     * @var string
+     */
+    private $PATH_IMAGES = ROOT . '/images/';
+
+    /**
+     * Path to found directory
+     *
+     * @var string
+     */
+    private $PATH_IMAGES_FOUND = ROOT . '/images/found/';
+
+    /**
+     * Path to 'not found' directory
+     *
+     * @var string
+     */
+    private $PATH_IMAGES_NOT_FOUND = ROOT . '/images/not found/';
+
+    /**
      * Logging switch
      *
      * @var bool
      */
-    private $LOGGING = true;
+    private $LOGGING = false;
+
+    /**
+     * Path to logs directory
+     *
+     * @var string
+     */
+    private $PATH_LOGS = ROOT . '/logs/';
 
     /**
      * MD5 search is enabled or not
@@ -89,34 +117,6 @@ class App {
     private $OUTPUT_HTML_FILE = ROOT . '/images/found/links.html';
 
     /**
-     * Path to logs directory
-     *
-     * @var string
-     */
-    private $PATH_LOGS = ROOT . '/logs/';
-
-    /**
-     * Path to images directory
-     *
-     * @var string
-     */
-    private $PATH_IMAGES = ROOT . '/images/';
-
-    /**
-     * Path to found directory
-     *
-     * @var string
-     */
-    private $PATH_IMAGES_FOUND = ROOT . '/images/found/';
-
-    /**
-     * Path to 'not found' directory
-     *
-     * @var string
-     */
-    private $PATH_IMAGES_NOT_FOUND = ROOT . '/images/not found/';
-
-    /**
      * Is custom path set (via script argument)
      *
      * @var bool
@@ -151,6 +151,10 @@ class App {
     {
         if (!function_exists('curl_version')) {
             die("'php-curl' package not found!\n");
+        }
+
+        if (!class_exists('ZipArchive')) {
+            die("'php-zip' package not found!\n");
         }
 
         set_time_limit(0);
@@ -224,10 +228,13 @@ class App {
     {
         if (!empty($path)) {
             $this->CUSTOM_PATH = true;
-            $this->PATH_IMAGES = $path;
+            $this->PATH_IMAGES = realpath($path);
+            $this->PATH_IMAGES_FOUND = $this->PATH_IMAGES . '/found/';
+            $this->PATH_IMAGES_NOT_FOUND = $this->PATH_IMAGES . '/not found/';
+            $this->OUTPUT_HTML_FILE = $this->PATH_IMAGES_FOUND . '/links.html';
 
-            if (!is_dir($this->PATH_IMAGES)) {
-                die("Path is not valid: " . $this->PATH_IMAGES . "\n\n");
+            if (!$this->PATH_IMAGES) {
+                die("Path is not valid: " . $path . "\n\n");
             }
         }
     }
@@ -250,12 +257,19 @@ class App {
                 $this->LOGGING = $config['LOGGING'];
             }
 
-            if (isset($config['PATH_LOGS'])) {
-                $this->PATH_LOGS = realpath($config['PATH_LOGS']);
+            if (isset($config['PATH_IMAGES']) && !$this->CUSTOM_PATH) {
+                $this->PATH_IMAGES = $config['PATH_IMAGES'];
+                $this->PATH_IMAGES_FOUND = $this->PATH_IMAGES . '/found/';
+                $this->PATH_IMAGES_NOT_FOUND = $this->PATH_IMAGES . '/not found/';
+                $this->OUTPUT_HTML_FILE = $this->PATH_IMAGES_FOUND . '/links.html';
             }
 
-            if (isset($config['PATH_IMAGES']) && !$this->CUSTOM_PATH) {
-                $this->PATH_IMAGES = realpath($config['PATH_IMAGES']);
+            if (isset($config['OUTPUT_HTML'])) {
+                $this->OUTPUT_HTML = $config['OUTPUT_HTML'];
+            }
+
+            if (isset($config['OUTPUT_HTML_FILE'])) {
+                $this->OUTPUT_HTML_FILE = $config['OUTPUT_HTML_FILE'];
             }
 
             if (isset($config['MD5_SEARCH'])) {
@@ -264,16 +278,6 @@ class App {
 
             if (isset($config['REVERSE_SEARCH'])) {
                 $this->REVERSE_SEARCH = $config['REVERSE_SEARCH'];
-            }
-
-            if (isset($config['OUTPUT_HTML'])) {
-                $this->OUTPUT_HTML = $config['OUTPUT_HTML'];
-            }
-
-            if (isset($config['OUTPUT_HTML_FILE'])) {
-                $this->OUTPUT_HTML_FILE = realpath(dirname($config['OUTPUT_HTML_FILE'])) . '/' . basename($config['OUTPUT_HTML_FILE']);
-            } else {
-                $this->OUTPUT_HTML_FILE = $this->PATH_IMAGES_FOUND . '/links.html';
             }
 
             if (isset($config['USE_PHPWFIO'])) {
@@ -377,11 +381,12 @@ class App {
                             $this->printout(" done!\n");
                             $this->printout("Unpacking...");
 
+                            $zip = false;
                             if (class_exists("ZipArchive")) {
                                 $zip = new \ZipArchive;
                             }
 
-                            if (is_object($zip) && $zip->open($update_file) === true) {
+                            if ($zip && $zip->open($update_file) === true) {
                                 $zip->extractTo(ROOT);
                                 $zip->close();
                                 $this->printout(" done!\n\n");
@@ -430,51 +435,49 @@ class App {
      */
     public function run()
     {
+        $this->PATH_IMAGES = str_replace("//", "/", $this->PATH_IMAGES);
+
         if (!$this->CUSTOM_PATH && !is_dir($this->PATH_IMAGES)) {
             mkdir($this->PATH_IMAGES);
         }
 
-        $this->PATH_IMAGES_FOUND = $this->PATH_IMAGES . '/found/';
+        $this->PATH_IMAGES_FOUND = str_replace("//", "/", $this->PATH_IMAGES_FOUND);
 
         if (!is_dir($this->PATH_IMAGES_FOUND)) {
             mkdir($this->PATH_IMAGES_FOUND);
         }
 
-        $this->PATH_IMAGES_NOT_FOUND = $this->PATH_IMAGES . '/not found/';
+        $this->PATH_IMAGES_NOT_FOUND = str_replace("//", "/", $this->PATH_IMAGES_NOT_FOUND);
 
         if (!is_dir($this->PATH_IMAGES_NOT_FOUND)) {
             mkdir($this->PATH_IMAGES_NOT_FOUND);
         }
 
-        if (!is_dir($this->PATH_LOGS) || !is_writable($this->PATH_LOGS)) {
-            $this->PATH_LOGS = ROOT . '/' . $this->PATH_LOGS;
-        }
+        $this->PATH_LOGS = str_replace("//", "/", $this->PATH_LOGS);
 
         if ($this->LOGGING && !is_dir($this->PATH_LOGS)) {
             mkdir($this->PATH_LOGS);
         }
 
+        $this->OUTPUT_HTML_FILE = str_replace("//", "/", $this->OUTPUT_HTML_FILE);
+
         if ($this->OUTPUT_HTML && !is_file($this->OUTPUT_HTML_FILE)) {
             touch($this->OUTPUT_HTML_FILE);
-        }
-
-        if ($this->DEBUG) {
-            error_reporting(E_ALL);
-        }
-
-        if ($this->USE_PHPWFIO) {
-            $this->PATH_IMAGES = "wfio://" . $this->PATH_IMAGES;
-            $this->PATH_IMAGES_FOUND = "wfio://" . $this->PATH_IMAGES_FOUND;
-            $this->PATH_IMAGES_NOT_FOUND = "wfio://" . $this->PATH_IMAGES_NOT_FOUND;
         }
 
         if (file_exists(ROOT . '/tempfile')) {
             unlink(ROOT . '/tempfile');
         }
 
-        $this->PATH_LOGS = realpath($this->PATH_LOGS);
-
-        $this->OUTPUT_HTML_FILE = realpath($this->OUTPUT_HTML_FILE);
+        if ($this->DEBUG) {
+            error_reporting(E_ALL);
+            $this->printout("ROOT = " . ROOT . "\n");
+            $this->printout("PATH_IMAGES = " . $this->PATH_IMAGES . "\n");
+            $this->printout("PATH_IMAGES_FOUND = " . $this->PATH_IMAGES_FOUND . "\n");
+            $this->printout("PATH_IMAGES_NOT_FOUND = " . $this->PATH_IMAGES_NOT_FOUND . "\n");
+            $this->printout("PATH_LOGS = " . $this->PATH_LOGS . "\n");
+            $this->printout("OUTPUT_HTML_FILE = " . $this->OUTPUT_HTML_FILE . "\n");
+        }
 
         $this->showASCIISplash();
 
@@ -623,6 +626,12 @@ class App {
             $this->USE_PHPWFIO = false;
         }
 
+        if ($this->USE_PHPWFIO) {
+            $this->PATH_IMAGES = "wfio://" . $this->PATH_IMAGES;
+            $this->PATH_IMAGES_FOUND = "wfio://" . $this->PATH_IMAGES_FOUND;
+            $this->PATH_IMAGES_NOT_FOUND = "wfio://" . $this->PATH_IMAGES_NOT_FOUND;
+        }
+
         $files = [];
         $files_error = [];
         $files_count = 0;
@@ -733,7 +742,7 @@ class App {
                     $found++;
 
                     if ($this->OUTPUT_HTML) {
-                        $html_existing_contents = file_get_contents(realpath($this->OUTPUT_HTML_FILE));
+                        $html_existing_contents = file_get_contents($this->OUTPUT_HTML_FILE);
                     }
 
                     $html_output = '';
@@ -789,7 +798,7 @@ class App {
 
             closedir($handle);
         } else {
-            throw new \Exception("Path '$this->PATH_IMAGES' is invalid! This error shouldn't happen!\n\n");
+            throw new \Exception("Path '$this->PATH_IMAGES' is invalid, check config!\n\n");
         }
     }
 }

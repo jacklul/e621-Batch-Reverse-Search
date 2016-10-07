@@ -10,7 +10,7 @@ Package comes with compiled PHP library (x86 Non Thread Safe) and [wfio](https:/
 
 ### Linux
 
-Install PHP library and cURL extension - for APT users: `sudo apt-get install php-cli php-curl`
+Install PHP library and cURL extension - for APT users: `sudo apt-get install php-cli php-curl php-zip`
 
 ## Usage:
 - Put images into 'images' folder
