@@ -619,6 +619,10 @@ class App {
             $this->USE_PHPWFIO = false;
         }
 
+        if (strtoupper(substr(PHP_OS, 0, 3)) != 'WIN') {
+            $this->USE_PHPWFIO = false;
+        }
+
         $files = [];
         $files_error = [];
         $files_count = 0;
