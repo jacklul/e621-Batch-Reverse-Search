@@ -1,0 +1,13 @@
+{
+    "require": {
+        "php": ">=5.5.0",
+        "ext-curl": "*",
+        "ext-fileinfo": "*",
+        "ext-openssl": "*",
+        "ext-wfio": "*"
+    },
+    "require-dev": {
+        "squizlabs/php_codesniffer": "*",
+		"erusev/parsedown": "*"
+    }
+}
