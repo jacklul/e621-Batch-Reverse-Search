@@ -4,6 +4,9 @@ $pharName = "e621BRS";
 $srcRoot = realpath("src");
 $buildRoot = realpath("build");
 
+$buildFile = 'build.zip';
+$ignoredFiles = ['.', '..', '.gitkeep', 'images', 'logs', 'config.cfg', 'debug_error.txt'];
+
 if (ini_get("phar.readonly") == 0) {
     echo "Building...\n";
 
@@ -50,37 +53,56 @@ if (ini_get("phar.readonly") == 0) {
 }
 
 if (class_exists('ZipArchive')) {
-    if (file_exists(__DIR__ . "/build_template.zip")) {
+    if (is_dir($buildRoot)) {
         echo "Packing...\n";
 
-        echo " Cleaning up...\n";
-        if (file_exists(__DIR__ . '/build.zip')) {
-            unlink(__DIR__ . '/build.zip');
+        if (file_exists($buildFile)) {
+            unlink($buildFile);
         }
 
-        echo " Copying template...\n";
-        copy(__DIR__ . "/build_template.zip", __DIR__ . "/build.zip");
+        $dirName = basename($buildRoot);
 
-        $zip = new ZipArchive;
+        $zip = new ZipArchive();
+        $zip->open($buildFile, ZipArchive::CREATE);
 
-        $ignored = ['.', '..', '.gitkeep', 'build_template.zip', 'images', 'logs', 'runtime', 'config.cfg', 'debug_error.txt'];
+        if (substr($dirName, -1) != '/') {
+            $dirName .= '/';
+        }
 
-        if ($zip->open(__DIR__ . "/build.zip") === TRUE) {
-            if ($handle = opendir($buildRoot)) {
-                while (false !== ($entry = readdir($handle))) {
-                    if (!in_array($entry, $ignored)) {
-                        echo " Adding '$entry'...\n";
-                        $zip->addFile($buildRoot . '/' . $entry, $entry);
-                    }
+        $dirStack = array($dirName);
+        $cutFrom = strrpos($dirName, '/') + 1;
+
+        while (!empty($dirStack)) {
+            $currentDir = array_pop($dirStack);
+            $filesToAdd = array();
+
+            $dir = dir($currentDir);
+            while (false !== ($node = $dir->read())) {
+                if (in_array($node, $ignoredFiles)) {
+                    continue;
+                }
+                if (is_dir($currentDir . $node)) {
+                    array_push($dirStack, $currentDir . $node . '/');
+                }
+                if (is_file($currentDir . $node)) {
+                    $filesToAdd[] = $node;
                 }
             }
 
-            $zip->close();
+            $localDir = substr($currentDir, $cutFrom);
+            $zip->addEmptyDir($localDir);
+
+            foreach ($filesToAdd as $file) {
+                echo " Adding '$file'...\n";
+                $zip->addFile($currentDir . $file, $localDir . $file);
+            }
         }
+
+        $zip->close();
 
         echo "Done!\n\n";
     } else {
-        echo "! Can't pack build, no build_template.zip found!\n\n";
+        echo "! Build directory does not exist!\n\n";
     }
 } else {
     echo "! Can't pack build, 'php-zip' package not found!\n\n";
