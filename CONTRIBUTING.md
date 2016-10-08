@@ -8,7 +8,7 @@
 
 - Make your changes to source files in `src/` directory
 
-- Run [PHP_CodeSniffer](https://github.com/squizlabs/PHP_CodeSniffer) - `vendor/bin/phpcs --standard=phpcs.xml -sp --encoding=utf-8 src/ --report-width=150`
+- Run [PHP_CodeSniffer](https://github.com/squizlabs/PHP_CodeSniffer) - `vendor/bin/phpcs --standard=phpcs.xml.dist -sp --encoding=utf-8 src/ --report-width=150`
 
 - If it finds any errors or warnings please correct them before moving on to the next step (some can be fixed automatically with [PHP Code Beautifier and Fixer](https://github.com/squizlabs/PHP_CodeSniffer/wiki/Fixing-Errors-Automatically) - `vendor/bin/phpcbf --no-patch src/`
 
