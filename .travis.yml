@@ -23,4 +23,4 @@ install:
 
 script:
   - ./vendor/bin/phpcs --standard=phpcs.xml.dist -snp --encoding=utf-8 src/ --report-width=150
-  - php build.php && cd build && chmod 755 run.sh && ./run.sh
+  - php build.php && cd build && php e621BRS.phar
