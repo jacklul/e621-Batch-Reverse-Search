@@ -22,7 +22,7 @@ class App {
      *
      * @var string
      */
-    private $VERSION = '1.0.2';
+    private $VERSION = '1.0.3';
 
     /**
      * App Name
@@ -465,10 +465,6 @@ class App {
             touch($this->OUTPUT_HTML_FILE);
         }
 
-        if (file_exists(ROOT . '/tempfile')) {
-            unlink(ROOT . '/tempfile');
-        }
-
         if ($this->DEBUG) {
             error_reporting(E_ALL);
             $this->printout("ROOT = " . ROOT . "\n");
@@ -513,13 +509,23 @@ class App {
     private function reverseSearch($file)
     {
         if ($this->USE_PHPWFIO) {
-            copy($file, ROOT . '/tempfile');
+            if (function_exists("sys_get_temp_dir")) {
+                $TEMP_DIR = sys_get_temp_dir();
+            } else {
+                $TEMP_DIR = ROOT;
+            }
+
+            do {
+                $random = mt_rand(100, 10000);
+            } while ((file_exists($TEMP_DIR . '/tempfile_' . $random)));
+
+            copy($file, $TEMP_DIR . '/tempfile_' . $random);
         }
 
         $post_data = [];
 
         if ($this->USE_PHPWFIO) {
-            $post_data['file'] = new \CurlFile(ROOT . '/tempfile', mime_content_type($file), basename($file));
+            $post_data['file'] = new \CurlFile($TEMP_DIR . '/tempfile_' . $random, mime_content_type($file), basename($file));
         } else {
             $post_data['file'] = new \CurlFile($file, mime_content_type($file), basename($file));
         }
@@ -543,7 +549,7 @@ class App {
         $output = curl_exec($ch);
 
         if ($this->USE_PHPWFIO) {
-            unlink(ROOT . '/tempfile');
+            unlink($TEMP_DIR . '/tempfile_' . $random);
         }
 
         if ($this->DEBUG) {
