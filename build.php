@@ -80,7 +80,7 @@ if (class_exists('ZipArchive')) {
 
         echo "Done!\n\n";
     } else {
-        echo "! Can't pack build, no build_template.zip available!\n\n";
+        echo "! Can't pack build, no build_template.zip found!\n\n";
     }
 } else {
     echo "! Can't pack build, 'php-zip' package not found!\n\n";
