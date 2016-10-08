@@ -12,7 +12,7 @@
 
 - If it finds any errors or warnings please correct them before moving on to the next step (some can be fixed automatically with [PHP Code Beautifier and Fixer](https://github.com/squizlabs/PHP_CodeSniffer/wiki/Fixing-Errors-Automatically) - `vendor/bin/phpcbf --no-patch src/`
 
-- Build `phar` file  by running `php build.php`
+- Build `phar` file by running `php build.php`
 
 - Run the run script from inside `build/` directory and test your changes
 
