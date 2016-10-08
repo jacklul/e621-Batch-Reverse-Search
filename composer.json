@@ -3,7 +3,8 @@
         "php": ">=5.4.0",
         "ext-curl": "*",
         "ext-fileinfo": "*",
-        "ext-openssl": "*"
+        "ext-openssl": "*",
+        "ext-zip": "*"
     },
     "require-dev": {
         "squizlabs/php_codesniffer": "*",
