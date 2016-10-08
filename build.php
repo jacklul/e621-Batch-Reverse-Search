@@ -49,37 +49,41 @@ if (ini_get("phar.readonly") == 0) {
     echo "! Can't build - 'phar.readonly' is 'On', check php.ini!\n\n";
 }
 
-if (file_exists(__DIR__ . "/build_template.zip")) {
-    echo "Packing...\n";
+if (class_exists('ZipArchive')) {
+    if (file_exists(__DIR__ . "/build_template.zip")) {
+        echo "Packing...\n";
 
-    echo " Cleaning up...\n";
-    if (file_exists(__DIR__ . '/build.zip')) {
-        unlink(__DIR__ . '/build.zip');
-    }
-
-    echo " Copying template...\n";
-    copy(__DIR__ . "/build_template.zip", __DIR__ . "/build.zip");
-
-    $zip = new ZipArchive;
-
-    $ignored = ['.', '..', '.gitkeep', 'build_template.zip', 'images', 'logs', 'runtime', 'config.cfg', 'debug_error.txt'];
-
-    if ($zip->open(__DIR__ . "/build.zip") === TRUE) {
-        if ($handle = opendir($buildRoot)) {
-            while (false !== ($entry = readdir($handle))) {
-                if (!in_array($entry, $ignored)) {
-                    echo " Adding '$entry'...\n";
-                    $zip->addFile($buildRoot . '/' . $entry, $entry);
-                }
-            }
+        echo " Cleaning up...\n";
+        if (file_exists(__DIR__ . '/build.zip')) {
+            unlink(__DIR__ . '/build.zip');
         }
 
-        $zip->close();
-    }
+        echo " Copying template...\n";
+        copy(__DIR__ . "/build_template.zip", __DIR__ . "/build.zip");
 
-    echo "Done!\n\n";
+        $zip = new ZipArchive;
+
+        $ignored = ['.', '..', '.gitkeep', 'build_template.zip', 'images', 'logs', 'runtime', 'config.cfg', 'debug_error.txt'];
+
+        if ($zip->open(__DIR__ . "/build.zip") === TRUE) {
+            if ($handle = opendir($buildRoot)) {
+                while (false !== ($entry = readdir($handle))) {
+                    if (!in_array($entry, $ignored)) {
+                        echo " Adding '$entry'...\n";
+                        $zip->addFile($buildRoot . '/' . $entry, $entry);
+                    }
+                }
+            }
+
+            $zip->close();
+        }
+
+        echo "Done!\n\n";
+    } else {
+        echo "! Can't pack build, no build_template.zip available!\n\n";
+    }
 } else {
-    echo "! Can't pack build, no build_template.zip available!\n\n";
+    echo "! Can't pack build, 'php-zip' package not found!\n\n";
 }
 
 echo "Finished!\n\n";
