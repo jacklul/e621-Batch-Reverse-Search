@@ -18,6 +18,10 @@
 @unlink('build/images/found/test-reverse_search.png');
 @unlink('build/images/found/test-reverse_search.gif');
 
+if (!is_dir("build/images/")) {
+    mkdir("build/images/");
+}
+
 echo "Downloading test images...";
 
 $ch = curl_init();
