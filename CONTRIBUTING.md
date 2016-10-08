@@ -16,4 +16,6 @@
 
 - Run the run script from inside `build/` directory and test your changes
 
+- Just to be sure run `php test.php` and see if it works fine
+
 - If everything works fine push your changes to your fork then [create a pull request](https://github.com/jacklul/e621-Batch-Reverse-Search/compare)
