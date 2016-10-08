@@ -508,6 +508,8 @@ class App {
      */
     private function reverseSearch($file)
     {
+        $post_data = [];
+
         if ($this->USE_PHPWFIO) {
             if (function_exists("sys_get_temp_dir")) {
                 $TEMP_DIR = sys_get_temp_dir();
@@ -520,11 +522,7 @@ class App {
             } while ((file_exists($TEMP_DIR . '/tempfile_' . $random)));
 
             copy($file, $TEMP_DIR . '/tempfile_' . $random);
-        }
 
-        $post_data = [];
-
-        if ($this->USE_PHPWFIO) {
             $post_data['file'] = new \CurlFile($TEMP_DIR . '/tempfile_' . $random, mime_content_type($file), basename($file));
         } else {
             $post_data['file'] = new \CurlFile($file, mime_content_type($file), basename($file));
