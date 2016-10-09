@@ -229,7 +229,7 @@ class App {
      */
     private function shutdownHandler()
     {
-        if ($this->IS_RUNNING) {
+        if ($this->IS_RUNNING && !defined("IS_TEST")) {
             if ($this->IS_LINUX) {
                 system("echo Press ENTER key to continue...");
                 system("read -p \"\" key");
