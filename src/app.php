@@ -18,13 +18,6 @@ define("ROOT", dirname(str_replace("phar://", "", __DIR__)));
  */
 class App {
     /**
-     * App Version
-     *
-     * @var string
-     */
-    private $VERSION = '1.0.3';
-
-    /**
      * App Name
      *
      * @var string
@@ -32,7 +25,14 @@ class App {
     private $NAME = 'e621 Batch Reverse Search';
 
     /**
-     * Update URL
+     * App Version
+     *
+     * @var string
+     */
+    private $VERSION = '1.0.4';
+
+    /**
+     * App update URL
      *
      * @var string
      */
@@ -96,7 +96,8 @@ class App {
 
     /**
      * Use php-wfio extension or not
-     *  (https://github.com/kenjiuno/php-wfio)
+     *  This is required for UTF-8 filename support on Windows
+     *  (see https://github.com/kenjiuno/php-wfio)
      *
      * @var bool
      */
@@ -117,32 +118,39 @@ class App {
     private $OUTPUT_HTML_FILE = ROOT . '/images/found/links.html';
 
     /**
-     * Is custom path set (via script argument)
+     * Is the main loop running? (for signal handler)
      *
-     * @var bool
+     * @var string
      */
-    private $CUSTOM_PATH = false;
+    private $IS_RUNNING = false;
 
     /**
      * Script start time
      *
      * @var int
      */
-    private $START_TIME = 0;
+    private $START_TIME = null;
 
     /**
-     * Log format
+     * Log name format (set on first log output)
      *
      * @var string
      */
     private $LOG_NAME = '';
 
     /**
-     * Line buffer (for download progress)
+     * Is custom path set (argument)
+     *
+     * @var bool
+     */
+    private $CUSTOM_PATH = false;
+
+    /**
+     * Line buffer (for download progress handler)
      *
      * @var string
      */
-    private $OUTPUT_BUFFER = '';
+    private $LINE_BUFFER = '';
 
     /**
      * App constructor
@@ -161,6 +169,11 @@ class App {
         error_reporting(E_ERROR);
         date_default_timezone_set(date_default_timezone_get());
 
+        if (function_exists('pcntl_signal')) {
+            declare(ticks = 1);
+            pcntl_signal(SIGINT, [$this, 'interruptHandler']);
+        }
+
         $this->START_TIME = microtime(true);
     }
 
@@ -173,12 +186,28 @@ class App {
     {
         print $text;
 
-        if (empty($this->LOG_NAME)) {
-            $this->LOG_NAME = basename(__FILE__, '.php') . '_' . date("Ymd\_His");
-        }
-
         if ($this->LOGGING) {
+            if (empty($this->LOG_NAME)) {
+                $this->LOG_NAME = basename(__FILE__, '.php') . '_' . date("Ymd\_His");
+            }
+
             file_put_contents($this->PATH_LOGS . '/' . $this->LOG_NAME . '.log', $text, FILE_APPEND);
+        }
+    }
+
+    /**
+     * Interrupt handler (CTRL-C)
+     *  (Linux only)
+     *
+     * @param $signo
+     */
+    private function interruptHandler($signo = null)
+    {
+        if ($this->IS_RUNNING) {
+            $this->IS_RUNNING = false;
+        } else {
+            print("\r\n");
+            exit;
         }
     }
 
@@ -213,7 +242,7 @@ class App {
         }
 
         if ($total > 0) {
-            print (str_repeat(' ', 10) . "\r" . $this->OUTPUT_BUFFER . ' ' . round(($progress * 100) / $total, 0)) . "%";
+            print (str_repeat(' ', 10) . "\r" . $this->LINE_BUFFER . ' ' . round(($progress * 100) / $total, 0)) . "%";
         }
 
         usleep(100);
@@ -255,6 +284,10 @@ class App {
 
             if (isset($config['LOGGING'])) {
                 $this->LOGGING = $config['LOGGING'];
+            }
+
+            if (isset($config['PATH_LOGS'])) {
+                $this->PATH_LOGS = $config['PATH_LOGS'];
             }
 
             if (isset($config['PATH_IMAGES']) && !$this->CUSTOM_PATH) {
@@ -352,8 +385,8 @@ class App {
                     if (strtolower($line) != "n" && strtolower($line) != "no") {
                         $this->printout("\n");
 
-                        $this->OUTPUT_BUFFER = "Downloading update package...";
-                        $this->printout($this->OUTPUT_BUFFER);
+                        $this->LINE_BUFFER = "Downloading update package...";
+                        $this->printout($this->LINE_BUFFER);
 
                         $ch = curl_init($REMOTE_DOWNLOAD);
                         curl_setopt($ch, CURLOPT_USERAGENT, $this->NAME);
@@ -370,7 +403,7 @@ class App {
 
                         file_put_contents($update_file, $output);
 
-                        print("\r" . $this->OUTPUT_BUFFER);
+                        print("\r" . $this->LINE_BUFFER);
 
                         if ($fh = @fopen($update_file, "r")) {
                             $blob = fgets($fh, 5);
@@ -621,26 +654,28 @@ class App {
             $this->printout("Using path: " . str_replace("wfio://", "", $this->PATH_IMAGES) . "\n\n");
         }
 
-        if (!extension_loaded("wfio") && strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
-            $this->printout("WARNING: 'php-wfio' extension not found, UTF-8 filename support will be disabled!\n\n");
-            $this->USE_PHPWFIO = false;
-        }
+        $isLinux = false;
+        if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
+            if (!extension_loaded("wfio") && $this->USE_PHPWFIO) {
+                $this->printout("WARNING: 'php-wfio' extension not found, UTF-8 filename support will be disabled!\n\n");
+                $this->USE_PHPWFIO = false;
+            }
 
-        if (strtoupper(substr(PHP_OS, 0, 3)) != 'WIN') {
+            if ($this->USE_PHPWFIO) {
+                $this->PATH_IMAGES = "wfio://" . $this->PATH_IMAGES;
+                $this->PATH_IMAGES_FOUND = "wfio://" . $this->PATH_IMAGES_FOUND;
+                $this->PATH_IMAGES_NOT_FOUND = "wfio://" . $this->PATH_IMAGES_NOT_FOUND;
+            }
+        } else {
+            $isLinux = true;
             $this->USE_PHPWFIO = false;
-        }
-
-        if ($this->USE_PHPWFIO) {
-            $this->PATH_IMAGES = "wfio://" . $this->PATH_IMAGES;
-            $this->PATH_IMAGES_FOUND = "wfio://" . $this->PATH_IMAGES_FOUND;
-            $this->PATH_IMAGES_NOT_FOUND = "wfio://" . $this->PATH_IMAGES_NOT_FOUND;
         }
 
         $files = [];
         $files_error = [];
         $files_count = 0;
         $files_total = 0;
-        $found = 0;
+        $files_found = 0;
 
         if (is_dir($this->PATH_IMAGES)) {
             $this->printout("Scanning for images...");
@@ -651,7 +686,7 @@ class App {
                         $file_size = filesize($this->PATH_IMAGES . '/' . $entry);
                         $image_size = getimagesize($this->PATH_IMAGES . '/' . $entry);
 
-                        if (urlencode($entry) != $entry && !$this->USE_PHPWFIO) {
+                        if (urlencode($entry) != $entry && !$this->USE_PHPWFIO && !$isLinux) {
                             $files_error['encoding'] = true;
                         } elseif (!in_array(pathinfo($entry, PATHINFO_EXTENSION), array('jpg', 'jpeg', 'png', 'gif'))) {
                             $files_error['file_type'] = true;
@@ -691,118 +726,124 @@ class App {
 
             $this->printout("\n");
 
+            $this->IS_RUNNING = true;
             foreach ($files as $entry) {
-                $files_count++;
-                $this->printout('[' . ($files_count) . "/$files_total] Searching '" . (($this->USE_PHPWFIO) ? utf8_decode($entry):$entry) . "':\n");
+                if ($this->IS_RUNNING) {
+                    $files_count++;
+                    $this->printout('[' . ($files_count) . "/$files_total] Searching '" . (($this->USE_PHPWFIO) ? utf8_decode($entry):$entry) . "':\n");
 
-                if ($this->MD5_SEARCH) {
-                    $this->OUTPUT_BUFFER = " Trying md5 sum...";
-                    $this->printout($this->OUTPUT_BUFFER);
-
-                    $raw = $this->apiRequest('md5:' . md5_file($this->PATH_IMAGES . '/' . $entry));
-                    $results = json_decode($raw, true);
-
-                    print("\r" . $this->OUTPUT_BUFFER);
-                }
-
-                if (isset($results[0]['id'])) {
-                    $results[0] = $results[0]['id'];
-                } else {
                     if ($this->MD5_SEARCH) {
-                        if (is_array($results)) {
-                            $this->printout(" no matching posts found!\n");
-                        } else {
-                            $this->printout(" failed!\n");
-                        }
+                        $this->LINE_BUFFER = " Trying md5 sum...";
+                        $this->printout($this->LINE_BUFFER);
+
+                        $raw = $this->apiRequest('md5:' . md5_file($this->PATH_IMAGES . '/' . $entry));
+                        $results = json_decode($raw, true);
+
+                        print("\r" . $this->LINE_BUFFER);
                     }
 
-                    if ($this->REVERSE_SEARCH) {
-                        $this->OUTPUT_BUFFER = " Trying reverse search...";
-                        $this->printout($this->OUTPUT_BUFFER);
-
-                        $results = $this->reverseSearch($this->PATH_IMAGES . '/' . $entry);
-
-                        print("\r" . $this->OUTPUT_BUFFER);
-                    }
-                }
-
-                if (is_array($results)) {
-                    $results = array_unique($results);
-                }
-
-                if (isset($results['error'])) {
-                    if ($results['error'] == 'NoResults') {
-                        $this->printout(" no matching images found!\n");
-                        $this->safeRename($this->PATH_IMAGES . '/' . $entry, $this->PATH_IMAGES_NOT_FOUND . '/' . $entry);
-                    } elseif ($results['error'] == 'NotImage') {
-                        $this->printout(" not a valid image!\n");
-                    } elseif ($results['error'] == 'EmptyResult') {
-                        $this->printout(" no reply from the server!\n");
-                    } elseif ($results['error'] == 'UploadError') {
-                        $this->printout(" upload error!\n");
-                    }
-                } elseif (is_array($results) && count($results) > 0) {
-                    $this->printout(" success!\n");
-                    $found++;
-
-                    if ($this->OUTPUT_HTML) {
-                        $html_existing_contents = file_get_contents($this->OUTPUT_HTML_FILE);
-                    }
-
-                    $html_output = '';
-                    $results_text = '';
-                    for ($i = 0; $i < count($results); $i++) {
-                        $results_text .= '  https://e621.net/post/show/' . $results[$i] . "\n";
-
-                        if ($this->OUTPUT_HTML) {
-                            if (empty($html_existing_contents) || (!empty($html_existing_contents) && !strpos($html_existing_contents, 'e621.net/post/show/' . $results[$i]))) {
-                                $html_output .= '&nbsp;<a href="https://e621.net/post/show/' . $results[$i] . '" target="_blank">https://e621.net/post/show/' . $results[$i] . '</a>' . "\n<br>\n";
+                    if (isset($results[0]['id'])) {
+                        $results[0] = $results[0]['id'];
+                    } else {
+                        if ($this->MD5_SEARCH) {
+                            if (is_array($results)) {
+                                $this->printout(" no matching posts found!\n");
+                            } else {
+                                $this->printout(" failed!\n");
                             }
                         }
+
+                        if ($this->REVERSE_SEARCH) {
+                            $this->LINE_BUFFER = " Trying reverse search...";
+                            $this->printout($this->LINE_BUFFER);
+
+                            $results = $this->reverseSearch($this->PATH_IMAGES . '/' . $entry);
+
+                            print("\r" . $this->LINE_BUFFER);
+                        }
                     }
 
-                    $this->printout($results_text);
-
-                    if ($this->OUTPUT_HTML) {
-                        if (!file_exists($this->OUTPUT_HTML_FILE) || filesize($this->OUTPUT_HTML_FILE) == 0) {
-                            file_put_contents($this->OUTPUT_HTML_FILE, "<html>\n<head>\n<meta charset=\"UTF-8\">\n<title>Post Links (e621 Batch Reverse Search)</title>\n</head>\n<body>\n<h5>Generated by " . $this->NAME . "</h5></h1>", LOCK_EX);
-                        }
-
-                        if (!empty($html_output)) {
-                            file_put_contents($this->OUTPUT_HTML_FILE, "<b>" . ($entry) . "</b>:\n<br>\n$html_output<br>\n", FILE_APPEND | LOCK_EX);
-                        }
-                    } else {
-                        file_put_contents($this->PATH_IMAGES_FOUND . '/' . $entry . '.txt', "  " . trim(strip_tags($results_text)) . "\n", FILE_APPEND);
+                    if (is_array($results)) {
+                        $results = array_unique($results);
                     }
 
-                    $this->safeRename($this->PATH_IMAGES . '/' . $entry, $this->PATH_IMAGES_FOUND . '/' . $entry);
-                } elseif ($this->REVERSE_SEARCH) {
-                    $this->printout(" failed!\n");
+                    if (isset($results['error'])) {
+                        if ($results['error'] == 'NoResults') {
+                            $this->printout(" no matching images found!\n");
+                            $this->safeRename($this->PATH_IMAGES . '/' . $entry, $this->PATH_IMAGES_NOT_FOUND . '/' . $entry);
+                        } elseif ($results['error'] == 'NotImage') {
+                            $this->printout(" not a valid image!\n");
+                        } elseif ($results['error'] == 'EmptyResult') {
+                            $this->printout(" no reply from the server!\n");
+                        } elseif ($results['error'] == 'UploadError') {
+                            $this->printout(" upload error!\n");
+                        }
+                    } elseif (is_array($results) && count($results) > 0) {
+                        $this->printout(" success!\n");
+                        $files_found++;
 
-                    if ($this->DEBUG) {
-                        file_put_contents(ROOT . '/debug_error.txt', "iqdb.harry.lu server reply:\n\n" . $results);
-                        throw new \Exception("Unhandled error occurred! (check 'error.txt' and contact the developer)");
-                    } else {
-                        if ($this->LOGGING) {
-                            file_put_contents($this->PATH_LOGS . '/error_' . date("Ymd\_His") . '.txt', "iqdb.harry.lu server reply:\n\n" . $results);
+                        if ($this->OUTPUT_HTML) {
+                            $html_existing_contents = file_get_contents($this->OUTPUT_HTML_FILE);
                         }
 
-                        $this->printout("WARNING: Unhandled error occurred! Turn on DEBUG mode or LOGGING to see more details.\n");
+                        $html_output = '';
+                        $results_text = '';
+                        for ($i = 0; $i < count($results); $i++) {
+                            $results_text .= '  https://e621.net/post/show/' . $results[$i] . "\n";
+
+                            if ($this->OUTPUT_HTML) {
+                                if (empty($html_existing_contents) || (!empty($html_existing_contents) && !strpos($html_existing_contents, 'e621.net/post/show/' . $results[$i]))) {
+                                    $html_output .= '&nbsp;<a href="https://e621.net/post/show/' . $results[$i] . '" target="_blank">https://e621.net/post/show/' . $results[$i] . '</a>' . "\n<br>\n";
+                                }
+                            }
+                        }
+
+                        $this->printout($results_text);
+
+                        if ($this->OUTPUT_HTML) {
+                            if (!file_exists($this->OUTPUT_HTML_FILE) || filesize($this->OUTPUT_HTML_FILE) == 0) {
+                                file_put_contents($this->OUTPUT_HTML_FILE, "<html>\n<head>\n<meta charset=\"UTF-8\">\n<title>Post Links (e621 Batch Reverse Search)</title>\n</head>\n<body>\n<h5>Generated by " . $this->NAME . "</h5></h1>", LOCK_EX);
+                            }
+
+                            if (!empty($html_output)) {
+                                file_put_contents($this->OUTPUT_HTML_FILE, "<b>" . ($entry) . "</b>:\n<br>\n$html_output<br>\n", FILE_APPEND | LOCK_EX);
+                            }
+                        } else {
+                            file_put_contents($this->PATH_IMAGES_FOUND . '/' . $entry . '.txt', "  " . trim(strip_tags($results_text)) . "\n", FILE_APPEND);
+                        }
+
+                        $this->safeRename($this->PATH_IMAGES . '/' . $entry, $this->PATH_IMAGES_FOUND . '/' . $entry);
+                    } elseif ($this->REVERSE_SEARCH) {
+                        $this->printout(" failed!\n");
+
+                        if ($this->DEBUG) {
+                            file_put_contents(ROOT . '/debug_error.txt', "iqdb.harry.lu server reply:\n\n" . $results);
+                            throw new \Exception("Unhandled error occurred! (check 'error.txt' and contact the developer)");
+                        } elseif ($this->LOGGING) {
+                            $date = date("Ymd\_His");
+                            file_put_contents($this->PATH_LOGS . '/error_' . $date . '.txt', "iqdb.harry.lu server reply:\n\n" . $results);
+                            $this->printout("\nWARNING: Unhandled error occurred!\n");
+                        } else {
+                            $this->printout("\nWARNING: Unhandled error occurred! Turn on DEBUG mode or LOGGING to see more details.\n");
+                        }
                     }
+
+                    $this->printout("\n");
+                } else {
+                    $this->printout("WARNING: Interrupted by user!\n\n");
+                    break;
                 }
-
-                $this->printout("\n");
             }
 
             if ($files_total > 0) {
-                $this->printout("Found links for " . $found . "/" . $files_total . " images.\n");
+                $this->printout("Found links for " . $files_found . "/" . $files_total . " images.\n");
             }
 
             $this->printout("Finished in " . round(microtime(true) - $this->START_TIME, 3) . " seconds.\n\n");
 
             closedir($handle);
         } else {
-            throw new \Exception("Path '$this->PATH_IMAGES' is invalid, check config!\n\n");
+            throw new \Exception("Path '" . $this->PATH_IMAGES . "' is invalid, check config!\n\n");
         }
     }
 }
