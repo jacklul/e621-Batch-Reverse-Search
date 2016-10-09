@@ -8,5 +8,3 @@ if which php >/dev/null; then
 else
 	echo "Install 'php-cli' package first!"
 fi
-
-read -p "Press ENTER key to continue..." key

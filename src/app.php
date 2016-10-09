@@ -125,6 +125,13 @@ class App {
     private $IS_RUNNING = false;
 
     /**
+     * Is the script being run on Linux?
+     *
+     * @var string
+     */
+    private $IS_LINUX = false;
+
+    /**
      * Script start time
      *
      * @var int
@@ -169,7 +176,13 @@ class App {
         error_reporting(E_ERROR);
         date_default_timezone_set(date_default_timezone_get());
 
-        if (function_exists('pcntl_signal')) {
+        if (strtoupper(substr(PHP_OS, 0, 3)) != 'WIN') {
+            $this->IS_LINUX = true;
+        }
+
+        register_shutdown_function([$this, 'shutdownHandler']);
+
+        if ($this->IS_LINUX && function_exists('pcntl_signal')) {
             declare(ticks = 1);
             pcntl_signal(SIGINT, [$this, 'interruptHandler']);
         }
@@ -206,8 +219,24 @@ class App {
         if ($this->IS_RUNNING) {
             $this->IS_RUNNING = false;
         } else {
-            print("\r\n");
+            print("\r\n\n");
             exit;
+        }
+    }
+
+    /**
+     * Shutdown handler
+     */
+    private function shutdownHandler()
+    {
+        if ($this->IS_RUNNING) {
+            if ($this->IS_LINUX) {
+                system("echo Press ENTER key to continue...");
+                system("read -p \"\" key");
+            } else {
+                system("echo Press ENTER key to continue...");
+                system("set /p key=\"\"");
+            }
         }
     }
 
@@ -513,6 +542,8 @@ class App {
         $this->updater();
 
         $this->main();
+
+        exit;
     }
 
     /**
@@ -654,8 +685,7 @@ class App {
             $this->printout("Using path: " . str_replace("wfio://", "", $this->PATH_IMAGES) . "\n\n");
         }
 
-        $isLinux = false;
-        if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
+        if (!$this->IS_LINUX) {
             if (!extension_loaded("wfio") && $this->USE_PHPWFIO) {
                 $this->printout("WARNING: 'php-wfio' extension not found, UTF-8 filename support will be disabled!\n\n");
                 $this->USE_PHPWFIO = false;
@@ -667,7 +697,6 @@ class App {
                 $this->PATH_IMAGES_NOT_FOUND = "wfio://" . $this->PATH_IMAGES_NOT_FOUND;
             }
         } else {
-            $isLinux = true;
             $this->USE_PHPWFIO = false;
         }
 
@@ -686,7 +715,7 @@ class App {
                         $file_size = filesize($this->PATH_IMAGES . '/' . $entry);
                         $image_size = getimagesize($this->PATH_IMAGES . '/' . $entry);
 
-                        if (urlencode($entry) != $entry && !$this->USE_PHPWFIO && !$isLinux) {
+                        if (urlencode($entry) != $entry && !$this->USE_PHPWFIO && !$this->IS_LINUX) {
                             $files_error['encoding'] = true;
                         } elseif (!in_array(pathinfo($entry, PATHINFO_EXTENSION), array('jpg', 'jpeg', 'png', 'gif'))) {
                             $files_error['file_type'] = true;
