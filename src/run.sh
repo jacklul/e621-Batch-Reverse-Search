@@ -1,7 +1,7 @@
 #!/bin/bash
 
 SPATH=$(dirname $0)
-#PATH=$SPATH/runtime:$PATH:
+PATH=$SPATH/runtime:$PATH:
 
 if which php >/dev/null; then
 	php "$SPATH/e621BRS.phar" $@

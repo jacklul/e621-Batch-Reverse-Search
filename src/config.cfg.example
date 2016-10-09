@@ -4,8 +4,8 @@ DEBUG=false
 ; Log console output to a file
 LOGGING=false
 
-; Path to images directory (should be an absolute path)
-PATH_IMAGES="images/"
+; Path to logs directory
+PATH_LOGS="logs/"
 
 ; Enable searching by MD5
 MD5_SEARCH=true
@@ -13,11 +13,14 @@ MD5_SEARCH=true
 ; Enable searching with reverse search (iqdb.harry.lu)
 REVERSE_SEARCH=true
 
-; Use php-wfio extension
-USE_PHPWFIO=true
+; Path to images directory (should be an absolute path)
+PATH_IMAGES="images/"
 
 ; Output HTML
 OUTPUT_HTML=true
 
 ; HTML file to output to (should be an absolute path)
 OUTPUT_HTML_FILE="images/found/links.html"
+
+; Use php-wfio extension
+USE_PHPWFIO=true
