@@ -1,5 +1,7 @@
 <?php
 
+define("IS_TEST", true);
+
 /* need a better way to do this... */
 @unlink('build/images/test-md5.jpg');
 @unlink('build/images/test-md5.jpeg');
