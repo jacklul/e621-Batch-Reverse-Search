@@ -5,5 +5,3 @@ SET SPATH=%~dp0
 SET PATH=%SPATH%\runtime\;%PATH%
 
 php "%SPATH%/e621BRS.phar" %*
-
-@pause
