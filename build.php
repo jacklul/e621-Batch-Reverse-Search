@@ -10,7 +10,6 @@ $ignoredFiles = ['.', '..', '.gitkeep', 'images', 'logs', 'config.cfg', 'debug_e
 if (ini_get("phar.readonly") == 0) {
     echo "Building...\n";
 
-    echo " Cleaning up...\n";
     if (file_exists($buildRoot . '/' . $pharName . '.phar')) {
         unlink($buildRoot . '/' . $pharName . '.phar');
     }
@@ -93,7 +92,7 @@ if (class_exists('ZipArchive')) {
             $zip->addEmptyDir($localDir);
 
             foreach ($filesToAdd as $file) {
-                echo " Adding '$file'...\n";
+                echo " '$currentDir$file'...\n";
                 $zip->addFile($currentDir . $file, $localDir . $file);
             }
         }
