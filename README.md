@@ -7,6 +7,7 @@ A script that iterates over a directory and performs a reverse search for every 
 ### Windows
 
 Package comes with compiled **PHP 5.6 library** (x86 Non Thread Safe)
+
 You will need **Visual C++ 2012 Redistributable (x86)** for it to run - https://www.microsoft.com/en-us/download/details.aspx?id=30679
 
 ### Linux
