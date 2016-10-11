@@ -7,7 +7,6 @@
 
 # Build
 build.zip
-build_template.zip
 build/*
 !build/.gitkeep
 
