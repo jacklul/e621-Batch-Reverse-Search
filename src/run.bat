@@ -5,3 +5,6 @@ SET SPATH=%~dp0
 SET PATH=%SPATH%\runtime\;%PATH%
 
 php "%SPATH%/e621BRS.phar" %*
+
+echo Press ENTER key to continue...
+set /p key=""

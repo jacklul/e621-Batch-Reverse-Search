@@ -180,8 +180,6 @@ class App {
             $this->IS_LINUX = true;
         }
 
-        register_shutdown_function([$this, 'shutdownHandler']);
-
         if ($this->IS_LINUX && function_exists('pcntl_signal')) {
             declare(ticks = 1);
             pcntl_signal(SIGINT, [$this, 'interruptHandler']);
@@ -221,22 +219,6 @@ class App {
         } else {
             print("\r\n\n");
             exit;
-        }
-    }
-
-    /**
-     * Shutdown handler
-     */
-    private function shutdownHandler()
-    {
-        if ($this->IS_RUNNING && !defined("IS_TEST")) {
-            if ($this->IS_LINUX) {
-                system("echo Press ENTER key to continue...");
-                system("read -p \"\" key");
-            } else {
-                system("echo Press ENTER key to continue...");
-                system("set /p key=\"\"");
-            }
         }
     }
 
@@ -676,8 +658,6 @@ class App {
 
     /**
      * Main function
-     *
-     * @throws \Exception
      */
     private function main()
     {
@@ -847,7 +827,7 @@ class App {
 
                         if ($this->DEBUG) {
                             file_put_contents(ROOT . '/debug_error.txt', "iqdb.harry.lu server reply:\n\n" . $results);
-                            throw new \Exception("Unhandled error occurred! (check 'error.txt' and contact the developer)");
+                            die("Unhandled error occurred! (check 'error.txt' and contact the developer)");
                         } elseif ($this->LOGGING) {
                             $date = date("Ymd\_His");
                             file_put_contents($this->PATH_LOGS . '/error_' . $date . '.txt', "iqdb.harry.lu server reply:\n\n" . $results);
@@ -872,7 +852,7 @@ class App {
 
             closedir($handle);
         } else {
-            throw new \Exception("Path '" . $this->PATH_IMAGES . "' is invalid, check config!\n\n");
+            die("Path '" . $this->PATH_IMAGES . "' is invalid, check config!\n\n");
         }
     }
 }
