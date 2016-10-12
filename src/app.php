@@ -81,6 +81,20 @@ class App {
     private $PATH_LOGS = ROOT . '/logs/';
 
     /**
+     * Output links to HTML file or not
+     *
+     * @var bool
+     */
+    private $OUTPUT_HTML = true;
+
+    /**
+     * Output to HTML destination file
+     *
+     * @var string
+     */
+    private $OUTPUT_HTML_FILE = ROOT . '/images/found/links.html';
+
+    /**
      * MD5 search is enabled or not
      *
      * @var bool
@@ -104,23 +118,16 @@ class App {
     private $USE_PHPWFIO = true;
 
     /**
-     * Output links to HTML file or not
-     *
-     * @var bool
-     */
-    private $OUTPUT_HTML = true;
-
-    /**
-     * Output to HTML destination file
+     * Convert PNG to JPG
      *
      * @var string
      */
-    private $OUTPUT_HTML_FILE = ROOT . '/images/found/links.html';
+    private $CONVERT_PNG = true;
 
     /**
      * Is the main loop running? (for signal handler)
      *
-     * @var string
+     * @var bool
      */
     private $IS_RUNNING = false;
 
@@ -322,6 +329,10 @@ class App {
 
             if (isset($config['REVERSE_SEARCH'])) {
                 $this->REVERSE_SEARCH = $config['REVERSE_SEARCH'];
+            }
+
+            if (isset($config['CONVERT_PNG'])) {
+                $this->CONVERT_PNG = $config['CONVERT_PNG'];
             }
 
             if (isset($config['USE_PHPWFIO'])) {
@@ -556,20 +567,32 @@ class App {
     {
         $post_data = [];
 
+        if (function_exists("sys_get_temp_dir")) {
+            $TEMP_DIR = sys_get_temp_dir() . '/e621brs/';
+        } else {
+            $TEMP_DIR = ROOT . '/.tmp/';
+        }
+
+        if (!is_dir($TEMP_DIR)) {
+            mkdir($TEMP_DIR);
+        }
+
+        do {
+            $random = mt_rand(100, 10000);
+        } while ((file_exists($TEMP_DIR . '/tempfile_' . $random)));
+
+        if ($this->CONVERT_PNG && pathinfo($file, PATHINFO_EXTENSION) == 'png') {
+            $image = imagecreatefrompng($file);
+            imagejpeg($image, $TEMP_DIR . '/tempfile_' . $random, 90);
+            imagedestroy($image);
+        }
+
         if ($this->USE_PHPWFIO) {
-            if (function_exists("sys_get_temp_dir")) {
-                $TEMP_DIR = sys_get_temp_dir();
-            } else {
-                $TEMP_DIR = ROOT;
+            if (!file_exists($TEMP_DIR . '/tempfile_' . $random)) {
+                copy($file, $TEMP_DIR . '/tempfile_' . $random);
             }
 
-            do {
-                $random = mt_rand(100, 10000);
-            } while ((file_exists($TEMP_DIR . '/tempfile_' . $random)));
-
-            copy($file, $TEMP_DIR . '/tempfile_' . $random);
-
-            $post_data['file'] = new \CurlFile($TEMP_DIR . '/tempfile_' . $random, mime_content_type($file), basename($file));
+            $post_data['file'] = new \CurlFile($TEMP_DIR . '/tempfile_' . $random, mime_content_type($TEMP_DIR . '/tempfile_' . $random), basename($file));
         } else {
             $post_data['file'] = new \CurlFile($file, mime_content_type($file), basename($file));
         }
@@ -592,7 +615,7 @@ class App {
 
         $output = curl_exec($ch);
 
-        if ($this->USE_PHPWFIO) {
+        if (file_exists($TEMP_DIR . '/tempfile_' . $random)) {
             unlink($TEMP_DIR . '/tempfile_' . $random);
         }
 
@@ -699,7 +722,7 @@ class App {
                             $files_error['encoding'] = true;
                         } elseif (!in_array(pathinfo($entry, PATHINFO_EXTENSION), array('jpg', 'jpeg', 'png', 'gif'))) {
                             $files_error['file_type'] = true;
-                        } elseif ($file_size > 8388608) {
+                        } elseif (!$this->CONVERT_PNG && $file_size > 8388608) {
                             $files_error['file_size'] = true;
                         } elseif ($image_size[0] > 7500 || $image_size[1] > 7500) {
                             $files_error['image_size'] = true;
