@@ -624,7 +624,7 @@ class App {
 
         $output = curl_exec($ch);
 
-        if (ISSET($TEMP_FILE) && file_exists($TEMP_FILE)) {
+        if (isset($TEMP_FILE) && file_exists($TEMP_FILE)) {
             unlink($TEMP_FILE);
         }
 
