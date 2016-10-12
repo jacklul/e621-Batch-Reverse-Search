@@ -29,7 +29,7 @@ class App {
      *
      * @var string
      */
-    private $VERSION = '1.1.0';
+    private $VERSION = '1.1.1';
 
     /**
      * App update URL
@@ -39,7 +39,7 @@ class App {
     private $UPDATE_URL = 'https://api.github.com/repos/jacklul/e621-Batch-Reverse-Search/releases/latest';
 
     /**
-     * Debug mode switch
+     * Set debug mode on or off
      *
      * @var bool
      */
@@ -67,7 +67,7 @@ class App {
     private $PATH_IMAGES_NOT_FOUND = ROOT . '/images/not found/';
 
     /**
-     * Logging switch
+     * Log console output to a file or not
      *
      * @var bool
      */
@@ -118,11 +118,11 @@ class App {
     private $USE_PHPWFIO = true;
 
     /**
-     * Convert PNG to JPG
+     * Convert image into JPG with '90' quality before uploading
      *
      * @var string
      */
-    private $CONVERT_PNG = true;
+    private $USE_CONVERSION = true;
 
     /**
      * Is the main loop running? (for signal handler)
@@ -331,16 +331,16 @@ class App {
                 $this->REVERSE_SEARCH = $config['REVERSE_SEARCH'];
             }
 
-            if (isset($config['CONVERT_PNG'])) {
-                $this->CONVERT_PNG = $config['CONVERT_PNG'];
+            if (!$this->REVERSE_SEARCH && !$this->MD5_SEARCH) {
+                die("No search method set, check config!\n\n");
             }
 
             if (isset($config['USE_PHPWFIO'])) {
                 $this->USE_PHPWFIO = $config['USE_PHPWFIO'];
             }
 
-            if (!$this->REVERSE_SEARCH && !$this->MD5_SEARCH) {
-                die("No search method set, check config!\n\n");
+            if (isset($config['USE_CONVERSION'])) {
+                $this->USE_CONVERSION = $config['USE_CONVERSION'];
             }
         }
     }
@@ -567,32 +567,43 @@ class App {
     {
         $post_data = [];
 
-        if (function_exists("sys_get_temp_dir")) {
-            $TEMP_DIR = sys_get_temp_dir() . '/e621brs/';
-        } else {
-            $TEMP_DIR = ROOT . '/.tmp/';
-        }
-
-        if (!is_dir($TEMP_DIR)) {
-            mkdir($TEMP_DIR);
-        }
-
-        do {
-            $random = mt_rand(100, 10000);
-        } while ((file_exists($TEMP_DIR . '/tempfile_' . $random)));
-
-        if ($this->CONVERT_PNG && pathinfo($file, PATHINFO_EXTENSION) == 'png') {
-            $image = imagecreatefrompng($file);
-            imagejpeg($image, $TEMP_DIR . '/tempfile_' . $random, 90);
-            imagedestroy($image);
-        }
-
-        if ($this->USE_PHPWFIO) {
-            if (!file_exists($TEMP_DIR . '/tempfile_' . $random)) {
-                copy($file, $TEMP_DIR . '/tempfile_' . $random);
+        if ($this->USE_PHPWFIO || $this->USE_CONVERSION) {
+            if (function_exists("sys_get_temp_dir")) {
+                $TEMP_DIR = sys_get_temp_dir() . '/' . $this->NAME;
+            } else {
+                $TEMP_DIR = ROOT . '/.tmp/';
             }
 
-            $post_data['file'] = new \CurlFile($TEMP_DIR . '/tempfile_' . $random, mime_content_type($TEMP_DIR . '/tempfile_' . $random), basename($file));
+            if (!is_dir($TEMP_DIR)) {
+                mkdir($TEMP_DIR);
+            }
+
+            do {
+                $TEMP_FILE = $TEMP_DIR . '/tmp' . str_pad(mt_rand(1, 100), 3, "0", STR_PAD_LEFT) . '_' . basename($file);
+            } while ((file_exists($TEMP_FILE)));
+
+            if ($this->USE_CONVERSION) {
+                $mime_type = mime_content_type($file);
+
+                echo $mime_type . "\n";
+
+                if ($mime_type == 'image/png') {
+                    $image = imagecreatefrompng($file);
+                } elseif ($mime_type == 'image/jpeg') {
+                    $image = imagecreatefromjpeg($file);
+                } elseif ($mime_type == 'image/gif') {
+                    $image = imagecreatefromgif($file);
+                }
+
+                if (isset($image)) {
+                    imagejpeg($image, $TEMP_FILE, 90);
+                    imagedestroy($image);
+                }
+            } elseif ($this->USE_PHPWFIO) {
+                copy($file, $TEMP_FILE);
+            }
+
+            $post_data['file'] = new \CurlFile($TEMP_FILE, mime_content_type($TEMP_FILE), basename($TEMP_FILE));
         } else {
             $post_data['file'] = new \CurlFile($file, mime_content_type($file), basename($file));
         }
@@ -615,8 +626,8 @@ class App {
 
         $output = curl_exec($ch);
 
-        if (file_exists($TEMP_DIR . '/tempfile_' . $random)) {
-            unlink($TEMP_DIR . '/tempfile_' . $random);
+        if (ISSET($TEMP_FILE) && file_exists($TEMP_FILE)) {
+            unlink($TEMP_FILE);
         }
 
         if ($this->DEBUG) {
@@ -722,7 +733,7 @@ class App {
                             $files_error['encoding'] = true;
                         } elseif (!in_array(pathinfo($entry, PATHINFO_EXTENSION), array('jpg', 'jpeg', 'png', 'gif'))) {
                             $files_error['file_type'] = true;
-                        } elseif (!$this->CONVERT_PNG && $file_size > 8388608) {
+                        } elseif (!$this->USE_CONVERSION && $file_size > 8388608) {
                             $files_error['file_size'] = true;
                         } elseif ($image_size[0] > 7500 || $image_size[1] > 7500) {
                             $files_error['image_size'] = true;
