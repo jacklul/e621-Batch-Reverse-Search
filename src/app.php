@@ -29,7 +29,7 @@ class App {
      *
      * @var string
      */
-    private $VERSION = '1.1.1';
+    private $VERSION = '1.1.2';
 
     /**
      * App update URL
@@ -584,8 +584,6 @@ class App {
 
             if ($this->USE_CONVERSION) {
                 $mime_type = mime_content_type($file);
-
-                echo $mime_type . "\n";
 
                 if ($mime_type == 'image/png') {
                     $image = imagecreatefrompng($file);
