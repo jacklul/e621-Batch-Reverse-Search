@@ -2,7 +2,7 @@
 
 - [Fork](https://github.com/jacklul/e621-Batch-Reverse-Search/fork) this repository
 
-- Locally install PHP and enable `curl`, `fileinfo`, `openssl` and [`wfio`](https://github.com/kenjiuno/php-wfio) extensions 
+- Locally install PHP and enable `curl`, `fileinfo`, `openssl`, `gd` and [`wfio`](https://github.com/kenjiuno/php-wfio) extensions 
 
 - Install development dependencies with Composer - `composer install`
 
