@@ -1,29 +1,42 @@
-; Set debug mode on or off
-DEBUG=false
+; e621 Batch Reverse Search Script
+; Copyright (c) 2016 Jack'lul <https://jacklul.com>
+;
+; Config file
+;  Uncomment options you want to change (remove ";" before it)
+;  Try to use absolute paths!
+;
 
-; Path to images directory (should be an absolute path)
-PATH_IMAGES="images/"
+; Set debug mode on or off (default: false)
+;  Enabling it will print some additional information in the console while script is running
+;DEBUG=true
 
-; Log console output to a file or not
-LOGGING=false
+; Path to images directory (default: 'images' folder in script directory)
+;PATH_IMAGES="/home/jacklul/e621/images/"
 
-; Path to logs directory
-PATH_LOGS="logs/"
+; Log console output to a file or not (default: false)
+;  Enabling it will write all console output to a file
+;LOGGING=true
 
-; Output links to HTML file or not
-OUTPUT_HTML=true
+; Path to logs directory (default: 'logs' folder in script directory)
+;PATH_LOGS="/home/jacklul/e621/"
 
-; Output to HTML destination file (should be an absolute path)
-OUTPUT_HTML_FILE="images/found/links.html"
+; Output links to HTML file or not (default: true)
+;  When enabled all found links are pushed into HTML file
+;OUTPUT_HTML=true
 
-; MD5 search is enabled or not
-MD5_SEARCH=true
+; Output to HTML destination file (default: 'links.html' file in 'images/found' folder in script directory)
+;OUTPUT_HTML_FILE="/home/jacklul/e621/links.html"
 
-; Reverse search is enabled or not (iqdb.harry.lu)
-REVERSE_SEARCH=true
+; Whenever to do MD5 search or not (default: true)
+;MD5_SEARCH=true
 
-; Use php-wfio extension or not
-USE_PHPWFIO=true
+; Whenever to do Reverse search or not (default: true)
+;REVERSE_SEARCH=true
 
-; Convert image into JPG with '90' quality before uploading
-USE_CONVERSION=true
+; Use php-wfio extension or not [Windows only] (default: true)
+;USE_PHPWFIO=true
+
+; Convert image into JPG with '90' quality before uploading (default: true)
+;  It should not affect the results but can help when a lot of images
+;  are big in size (3MB or more) and fail to upload
+;USE_CONVERSION=true

@@ -1,21 +1,24 @@
 <?php
+/**
+ * e621 Batch Reverse Search Script
+ *
+ * Copyright (c) 2016 Jack'lul <https://jacklul.com>
+ *
+ * For the full copyright and license information,
+ * please view the LICENSE file that was distributed
+ * with this source code.
+ */
 
+/**
+ * Include the script
+ */
 require_once("app.php");
 
 /**
- * Run the script
+ * Run it!
  */
 try {
-    $app = new jacklul\e621BRS\App();
-
-    if (isset($argv[1])) {
-        $app->setImagesPath($argv[1]);
-    }
-
-    if (file_exists(ROOT . "/config.cfg")) {
-        $app->readConfig(ROOT . "/config.cfg");
-    }
-
+    $app = new jacklul\e621BRS\App(isset($argv[1]) ? $argv[1] : null);
     $app->run();
 } catch (\Exception $e) {
     print("\n" . $e . "\n\n");
