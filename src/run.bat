@@ -1,3 +1,13 @@
+::
+:: e621 Batch Reverse Search Script
+::
+:: Copyright (c) 2016 Jack'lul <https://jacklul.com>
+::
+:: For the full copyright and license information,
+:: please view the LICENSE file that was distributed
+:: with this source code.
+::
+
 @echo off
 TITLE e621 Batch Reverse Search
 

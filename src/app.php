@@ -29,7 +29,7 @@ class App {
      *
      * @var string
      */
-    private $VERSION = '1.1.2';
+    private $VERSION = '1.1.3';
 
     /**
      * App update URL
@@ -172,11 +172,7 @@ class App {
     public function __construct()
     {
         if (!function_exists('curl_version')) {
-            die("'php-curl' package not found!\n");
-        }
-
-        if (!class_exists('ZipArchive')) {
-            die("'php-zip' package not found!\n");
+            die("Required package 'php-curl' not found!\n");
         }
 
         set_time_limit(0);
@@ -190,6 +186,41 @@ class App {
         if ($this->IS_LINUX && function_exists('pcntl_signal')) {
             declare(ticks = 1);
             pcntl_signal(SIGINT, [$this, 'interruptHandler']);
+        }
+
+        $short_opts = "p::c::vu";
+        $long_opts  = ["path::", "config::", "version", "update"];
+
+        $options = getopt($short_opts, $long_opts);
+
+        if (isset($options['v']) || isset($options['version'])) {
+            $this->showVersion();
+        }
+
+        if (isset($options['u']) || isset($options['update'])) {
+            $this->showUpdater();
+        }
+
+        if (isset($options['p'])) {
+            $options['path'] = $options['p'];
+        }
+
+        if (isset($options['path'])) {
+            $this->setImagesPath($options['path']);
+        }
+
+        if (isset($options['c'])) {
+            $options['config'] = $options['c'];
+        }
+
+        if (isset($options['config'])) {
+            $this->readConfig(realpath($options['config']));
+        } elseif (file_exists(ROOT . "/config.cfg")) {
+            $this->readConfig(ROOT . "/config.cfg");
+        }
+
+        if (empty($options) && isset($arg)) {
+            $this->setImagesPath($arg);
         }
 
         $this->START_TIME = microtime(true);
@@ -271,18 +302,19 @@ class App {
      *
      * @param string $path
      */
-    public function setImagesPath($path)
+    private function setImagesPath($path)
     {
         if (!empty($path)) {
             $this->CUSTOM_PATH = true;
             $this->PATH_IMAGES = realpath($path);
+
+            if (!$this->PATH_IMAGES) {
+                die("Path is not valid: " . $path . "\n");
+            }
+
             $this->PATH_IMAGES_FOUND = $this->PATH_IMAGES . '/found/';
             $this->PATH_IMAGES_NOT_FOUND = $this->PATH_IMAGES . '/not found/';
             $this->OUTPUT_HTML_FILE = $this->PATH_IMAGES_FOUND . '/links.html';
-
-            if (!$this->PATH_IMAGES) {
-                die("Path is not valid: " . $path . "\n\n");
-            }
         }
     }
 
@@ -345,6 +377,26 @@ class App {
         }
     }
 
+    /**
+     * Just show version...
+     */
+    private function showVersion()
+    {
+        die($this->NAME . ' v' . $this->VERSION . "\n");
+    }
+
+    /**
+     * Just show updater...
+     */
+    private function showUpdater()
+    {
+        $this->updater();
+        die();
+    }
+
+    /**
+     * Just show ASCII splash...
+     */
     private function showASCIISplash()
     {
         print '        __ ___  __   ____        _       _
@@ -450,7 +502,7 @@ class App {
                                 $this->printout("Restart the script to use the new version!\n\n");
                             } else {
                                 $this->printout(" failed\n\n");
-                                $this->printout("Extract 'update.zip' manually to update.\n\n");
+                                $this->printout("Extract 'update.zip' manually.\n\n");
                             }
                         } else {
                             $this->printout(" failed!\n\n");
@@ -461,7 +513,7 @@ class App {
 
                             file_put_contents($update_file_html, '<meta http-equiv="refresh" content="0; url=' . $REMOTE_DOWNLOAD . '">Redirecting to <a href="' . $REMOTE_DOWNLOAD . '">' . $REMOTE_DOWNLOAD . '</a>...');
 
-                            $this->printout("Open 'update.html' in a web browser to download the update, then extract it.\n\n");
+                            $this->printout("Open 'update.html' in a web browser to download the update, then extract it manually.\n\n");
                         }
 
                         exit();
@@ -480,8 +532,6 @@ class App {
             } else {
                 $this->printout(" failed!\n");
             }
-
-            $this->printout("\n");
         }
     }
 
@@ -532,7 +582,32 @@ class App {
 
         $this->showASCIISplash();
 
+        if (!class_exists('ZipArchive')) {
+            $this->printout("WARNING: 'php-zip' package not found - update packages will not be extracted automatically!\n\n");
+        }
+
         $this->updater();
+
+        $this->printout("\n");
+
+        if ($this->CUSTOM_PATH) {
+            $this->printout("Using path: " . str_replace("wfio://", "", $this->PATH_IMAGES) . "\n\n");
+        }
+
+        if (!$this->IS_LINUX) {
+            if (!extension_loaded("wfio") && $this->USE_PHPWFIO) {
+                $this->printout("WARNING: 'php-wfio' extension not found, UTF-8 filename support will be disabled!\n\n");
+                $this->USE_PHPWFIO = false;
+            }
+
+            if ($this->USE_PHPWFIO) {
+                $this->PATH_IMAGES = "wfio://" . $this->PATH_IMAGES;
+                $this->PATH_IMAGES_FOUND = "wfio://" . $this->PATH_IMAGES_FOUND;
+                $this->PATH_IMAGES_NOT_FOUND = "wfio://" . $this->PATH_IMAGES_NOT_FOUND;
+            }
+        } else {
+            $this->USE_PHPWFIO = false;
+        }
 
         $this->main();
 
@@ -693,25 +768,6 @@ class App {
      */
     private function main()
     {
-        if ($this->CUSTOM_PATH) {
-            $this->printout("Using path: " . str_replace("wfio://", "", $this->PATH_IMAGES) . "\n\n");
-        }
-
-        if (!$this->IS_LINUX) {
-            if (!extension_loaded("wfio") && $this->USE_PHPWFIO) {
-                $this->printout("WARNING: 'php-wfio' extension not found, UTF-8 filename support will be disabled!\n\n");
-                $this->USE_PHPWFIO = false;
-            }
-
-            if ($this->USE_PHPWFIO) {
-                $this->PATH_IMAGES = "wfio://" . $this->PATH_IMAGES;
-                $this->PATH_IMAGES_FOUND = "wfio://" . $this->PATH_IMAGES_FOUND;
-                $this->PATH_IMAGES_NOT_FOUND = "wfio://" . $this->PATH_IMAGES_NOT_FOUND;
-            }
-        } else {
-            $this->USE_PHPWFIO = false;
-        }
-
         $files = [];
         $files_error = [];
         $files_count = 0;
@@ -880,11 +936,11 @@ class App {
                 $this->printout("Found links for " . $files_found . "/" . $files_total . " images.\n");
             }
 
-            $this->printout("Finished in " . round(microtime(true) - $this->START_TIME, 3) . " seconds.\n\n");
+            $this->printout("Finished in " . round(microtime(true) - $this->START_TIME, 3) . " seconds.\n");
 
             closedir($handle);
         } else {
-            die("Path '" . $this->PATH_IMAGES . "' is invalid, check config!\n\n");
+            die("Path '" . $this->PATH_IMAGES . "' is invalid, check config!\n");
         }
     }
 }
