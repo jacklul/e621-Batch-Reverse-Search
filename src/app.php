@@ -168,8 +168,10 @@ class App {
 
     /**
      * App constructor
+     *
+     * @param string $arg
      */
-    public function __construct()
+    public function __construct($arg = null)
     {
         if (!function_exists('curl_version')) {
             die("Required package 'php-curl' not found!\n");
