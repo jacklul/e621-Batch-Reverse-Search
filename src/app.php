@@ -118,7 +118,7 @@ class App {
     private $USE_PHPWFIO = true;
 
     /**
-     * Convert image into JPG with '90' quality before uploading
+     * Convert image into JPEG with '90' quality before uploading
      *
      * @var string
      */
@@ -173,16 +173,36 @@ class App {
      */
     public function __construct($arg = null)
     {
-        if (!function_exists('curl_version')) {
-            die("Required package 'php-curl' not found!\n");
-        }
-
         set_time_limit(0);
         error_reporting(E_ERROR);
         date_default_timezone_set(date_default_timezone_get());
 
         if (strtoupper(substr(PHP_OS, 0, 3)) != 'WIN') {
             $this->IS_LINUX = true;
+        }
+
+        if (!extension_loaded('curl')) {
+            if ($this->IS_LINUX) {
+                die("Required package 'php-curl' not found!\n");
+            } else {
+                die("'php_curl.dll' extension is not loaded!\n");
+            }
+        }
+
+        if (!extension_loaded('openssl')) {
+            if ($this->IS_LINUX) {
+                die("Required package 'php-openssl' not found!\n");
+            } else {
+                die("'php_openssl.dll' extension is not loaded!\n");
+            }
+        }
+
+        if (!extension_loaded('fileinfo')) {
+            if ($this->IS_LINUX) {
+                die("Required package 'php-fileinfo' not found!\n");
+            } else {
+                die("'php_fileinfo.dll' extension is not loaded!\n");
+            }
         }
 
         if ($this->IS_LINUX && function_exists('pcntl_signal')) {
@@ -584,8 +604,22 @@ class App {
 
         $this->showASCIISplash();
 
-        if (!class_exists('ZipArchive')) {
-            $this->printout("WARNING: 'php-zip' package not found - update packages will not be extracted automatically!\n\n");
+        if (!extension_loaded('zip')) {
+            if ($this->IS_LINUX) {
+                $this->printout("WARNING: 'php-zip' package not found - update packages will not be extracted automatically!\n\n");
+            } else {
+                $this->printout("WARNING: 'php_zip.dll' extension not loaded - update packages will not be extracted automatically!\n\n");
+            }
+        }
+
+        if (!extension_loaded('gd')) {
+            if ($this->IS_LINUX) {
+                $this->printout("WARNING: 'php-gd' package not found - conversion to JPEG will be disabled!\n\n");
+            } else {
+                $this->printout("WARNING: 'php_gd2.dll' extension not loaded - conversion to JPEG will be disabled!\n\n");
+            }
+
+            $this->USE_CONVERSION = false;
         }
 
         $this->updater();
@@ -598,7 +632,7 @@ class App {
 
         if (!$this->IS_LINUX) {
             if (!extension_loaded("wfio") && $this->USE_PHPWFIO) {
-                $this->printout("WARNING: 'php-wfio' extension not found, UTF-8 filename support will be disabled!\n\n");
+                $this->printout("WARNING: 'php_wfio.dll' extension not loaded - UTF-8 filename support will be disabled!\n\n");
                 $this->USE_PHPWFIO = false;
             }
 
