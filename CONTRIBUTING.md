@@ -2,7 +2,7 @@
 
 - [Fork](https://github.com/jacklul/e621-Batch-Reverse-Search/fork) this repository
 
-- See [base requirements]( https://github.com/jacklul/e621-Batch-Reverse-Search/blob/master/README.md), and install them if needed
+- See [base requirements](https://github.com/jacklul/e621-Batch-Reverse-Search/blob/master/README.md), and install them if needed
 
 - Install development dependencies with Composer - `composer install`
 

@@ -39,9 +39,18 @@ if (ini_get("phar.readonly") == 0) {
         require __DIR__ . '/vendor/erusev/parsedown/Parsedown.php';
 
         $Parsedown = new Parsedown();
-        file_put_contents($buildRoot . "/README.html", $Parsedown->text(file_get_contents(__DIR__ . '/README.md')));
-        file_put_contents($buildRoot . "/LICENSE.html", $Parsedown->text(file_get_contents(__DIR__ . '/LICENSE.md')));
-        file_put_contents($buildRoot . "/CONTRIBUTING.html", $Parsedown->text(file_get_contents(__DIR__ . '/CONTRIBUTING.md')));
+
+        $license = $Parsedown->text(file_get_contents(__DIR__ . '/LICENSE.md'));
+        $readme = $Parsedown->text(file_get_contents(__DIR__ . '/README.md'));
+        $contributing = $Parsedown->text(file_get_contents(__DIR__ . '/CONTRIBUTING.md'));
+
+        $readme = str_replace("https://github.com/jacklul/e621-Batch-Reverse-Search/blob/master/CONTRIBUTING.md", "CONTRIBUTING.html", $readme);
+        $readme = str_replace("https://github.com/jacklul/e621-Batch-Reverse-Search/blob/master/LICENSE.md", "LICENSE.html", $readme);
+        $contributing = str_replace("https://github.com/jacklul/e621-Batch-Reverse-Search/blob/master/README.md", "README.html", $contributing);
+
+        file_put_contents($buildRoot . "/README.html", $readme);
+        file_put_contents($buildRoot . "/LICENSE.html", $license);
+        file_put_contents($buildRoot . "/CONTRIBUTING.html", $contributing);
     } else {
         echo("! Can't parse markdown files into HTML, dependencies not installed - do 'composer install'!\n");
     }
