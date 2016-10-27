@@ -29,7 +29,7 @@ class App {
      *
      * @var string
      */
-    private $VERSION = '1.1.3';
+    private $VERSION = '1.1.4';
 
     /**
      * App update URL
@@ -881,6 +881,10 @@ class App {
                         if ($this->MD5_SEARCH) {
                             if (is_array($results)) {
                                 $this->printout(" no matching posts found!\n");
+
+                                if (!$this->REVERSE_SEARCH) {
+                                    $this->safeRename($this->PATH_IMAGES . '/' . $entry, $this->PATH_IMAGES_NOT_FOUND . '/' . $entry);
+                                }
                             } else {
                                 $this->printout(" failed!\n");
                             }
