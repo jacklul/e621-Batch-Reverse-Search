@@ -47,4 +47,5 @@ if (is_array($result) && !empty($result[0]['file_url']) && !empty($result[0]['sa
     require_once("build/e621BRS.phar");
 } else {
     echo " fail!\nTest cannot be performed!\n";
+    exit(1);
 }
