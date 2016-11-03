@@ -29,7 +29,7 @@ class App {
      *
      * @var string
      */
-    private $VERSION = '1.1.4';
+    private $VERSION = '1.1.5';
 
     /**
      * App update URL
@@ -175,7 +175,6 @@ class App {
     {
         set_time_limit(0);
         error_reporting(E_ERROR);
-        date_default_timezone_set(date_default_timezone_get());
 
         if (strtoupper(substr(PHP_OS, 0, 3)) != 'WIN') {
             $this->IS_LINUX = true;
@@ -679,19 +678,7 @@ class App {
         $post_data = [];
 
         if ($this->USE_PHPWFIO || $this->USE_CONVERSION) {
-            if (function_exists("sys_get_temp_dir")) {
-                $TEMP_DIR = sys_get_temp_dir() . '/' . $this->NAME;
-            } else {
-                $TEMP_DIR = ROOT . '/.tmp/';
-            }
-
-            if (!is_dir($TEMP_DIR)) {
-                mkdir($TEMP_DIR);
-            }
-
-            do {
-                $TEMP_FILE = $TEMP_DIR . '/tmp' . str_pad(mt_rand(1, 100), 3, "0", STR_PAD_LEFT) . '_' . basename($file);
-            } while ((file_exists($TEMP_FILE)));
+            $TEMP_FILE = tempnam(sys_get_temp_dir(), "Y69");
 
             if ($this->USE_CONVERSION) {
                 $mime_type = mime_content_type($file);
