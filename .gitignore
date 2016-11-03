@@ -6,7 +6,6 @@
 .phpintel
 
 # Build
-build.zip
 build/*
 !build/.gitkeep
 
