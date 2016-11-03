@@ -4,7 +4,7 @@ $pharName = "e621BRS";
 $srcRoot = realpath("src");
 $buildRoot = realpath("build");
 
-$buildFile = 'build/build.zip';
+$buildFile = 'build/e621_Batch_Reverse_Search.zip';
 $ignoredFiles = ['.', '..', '.gitkeep', 'images', 'logs', 'config.cfg', 'debug_error.txt', 'build.zip', 'e621_Batch_Reverse_Search.zip'];
 
 if (ini_get("phar.readonly") == 0) {
