@@ -29,7 +29,7 @@ class App {
      *
      * @var string
      */
-    private $VERSION = '1.1.5';
+    private $VERSION = '1.1.6';
 
     /**
      * App update URL
@@ -969,5 +969,7 @@ class App {
         } else {
             die("Path '" . $this->PATH_IMAGES . "' is invalid, check config!\n");
         }
+
+        echo "\x07"; // this is the beep
     }
 }
