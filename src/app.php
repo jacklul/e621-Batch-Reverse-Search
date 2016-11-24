@@ -29,7 +29,7 @@ class App {
      *
      * @var string
      */
-    private $VERSION = '1.1.6';
+    private $VERSION = '1.1.7';
 
     /**
      * App update URL
@@ -37,6 +37,13 @@ class App {
      * @var string
      */
     private $UPDATE_URL = 'https://api.github.com/repos/jacklul/e621-Batch-Reverse-Search/releases/latest';
+
+    /**
+     * User-agent for curl requests
+     *
+     * @var string
+     */
+    private $USER_AGENT = "e621 Batch Reverse Search (https://github.com/jacklul/e621-Batch-Reverse-Search)";
 
     /**
      * Set debug mode on or off
@@ -445,7 +452,7 @@ class App {
             $this->printout("Checking for updates...");
 
             $ch = curl_init($this->UPDATE_URL);
-            curl_setopt($ch, CURLOPT_USERAGENT, $this->NAME);
+            curl_setopt($ch, CURLOPT_USERAGENT, $this->USER_AGENT);
             curl_setopt($ch, CURLOPT_TIMEOUT, 10);
             curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
             curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 0);
@@ -484,7 +491,7 @@ class App {
                         $this->printout($this->LINE_BUFFER);
 
                         $ch = curl_init($REMOTE_DOWNLOAD);
-                        curl_setopt($ch, CURLOPT_USERAGENT, $this->NAME);
+                        curl_setopt($ch, CURLOPT_USERAGENT, $this->USER_AGENT);
                         curl_setopt($ch, CURLOPT_TIMEOUT, 300);
                         curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
                         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 0);
@@ -710,7 +717,7 @@ class App {
         $ch = curl_init();
 
         curl_setopt($ch, CURLOPT_URL, "http://iqdb.harry.lu");
-        curl_setopt($ch, CURLOPT_USERAGENT, $this->NAME);
+        curl_setopt($ch, CURLOPT_USERAGENT, $this->USER_AGENT);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
         curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
@@ -765,7 +772,7 @@ class App {
     {
         $ch = curl_init();
         curl_setopt($ch, CURLOPT_URL, 'https://e621.net/post/index.json?limit=' . $limit . '&page=' . $page . '&tags=' . $tags);
-        curl_setopt($ch, CURLOPT_USERAGENT, $this->NAME);
+        curl_setopt($ch, CURLOPT_USERAGENT, $this->USER_AGENT);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
         curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
