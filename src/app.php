@@ -29,7 +29,7 @@ class App {
      *
      * @var string
      */
-    private $VERSION = '1.1.6';
+    private $VERSION = '1.1.7';
 
     /**
      * App update URL
@@ -449,116 +449,126 @@ class App {
     private function updater()
     {
         if (!empty($this->UPDATE_URL)) {
-            $this->printout("Checking for updates...");
+            $updatecheckfile = ROOT . '/.updatecheck';
 
-            $ch = curl_init($this->UPDATE_URL);
-            curl_setopt($ch, CURLOPT_USERAGENT, $this->USER_AGENT);
-            curl_setopt($ch, CURLOPT_TIMEOUT, 10);
-            curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
-            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 0);
-            curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 1);
-            curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+            if (!file_exists($updatecheckfile) || filemtime($updatecheckfile) + 300 < time()) {
+                touch($updatecheckfile);
 
-            $update_check = curl_exec($ch);
-            curl_close($ch);
+                if (!$this->IS_LINUX) {
+                    exec('attrib +H "' . $updatecheckfile . '"');
+                }
 
-            if (!empty($update_check)) {
-                $update_check = json_decode($update_check, true);
-            }
-            
-            $REMOTE_VERSION = $update_check['tag_name'];
-            $REMOTE_DOWNLOAD = $update_check['assets'][0]['browser_download_url'];
+                $this->printout("Checking for updates...");
 
-            if ($REMOTE_VERSION !== "" && !empty($REMOTE_DOWNLOAD)) {
-                $update_file = ROOT . "/update.zip";
-                $update_file_html = ROOT . "/update.html";
+                $ch = curl_init($this->UPDATE_URL);
+                curl_setopt($ch, CURLOPT_USERAGENT, $this->USER_AGENT);
+                curl_setopt($ch, CURLOPT_TIMEOUT, 10);
+                curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
+                curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 0);
+                curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 1);
+                curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
 
-                if (version_compare($this->VERSION, $REMOTE_VERSION, '<')) {
-                    $this->printout(" update available (v" . $REMOTE_VERSION . ")\n");
+                $update_check = curl_exec($ch);
+                curl_close($ch);
 
-                    $this->printout("Do you wish to update now? [Y]es*/[N]o: ");
+                if (!empty($update_check)) {
+                    $update_check = json_decode($update_check, true);
+                }
 
-                    if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
-                        $line = stream_get_line(STDIN, 1024, PHP_EOL);
-                    } else {
-                        $line = readline('');
-                    }
+                $REMOTE_VERSION = $update_check['tag_name'];
+                $REMOTE_DOWNLOAD = $update_check['assets'][0]['browser_download_url'];
 
-                    if (strtolower($line) != "n" && strtolower($line) != "no") {
-                        $this->printout("\n");
+                if ($REMOTE_VERSION !== "" && !empty($REMOTE_DOWNLOAD)) {
+                    $update_file = ROOT . "/update.zip";
+                    $update_file_html = ROOT . "/update.html";
 
-                        $this->LINE_BUFFER = "Downloading update package...";
-                        $this->printout($this->LINE_BUFFER);
+                    if (version_compare($this->VERSION, $REMOTE_VERSION, '<')) {
+                        $this->printout(" update available (v" . $REMOTE_VERSION . ")\n");
 
-                        $ch = curl_init($REMOTE_DOWNLOAD);
-                        curl_setopt($ch, CURLOPT_USERAGENT, $this->USER_AGENT);
-                        curl_setopt($ch, CURLOPT_TIMEOUT, 300);
-                        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
-                        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 0);
-                        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 1);
-                        curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-                        curl_setopt($ch, CURLOPT_NOPROGRESS, false);
-                        curl_setopt($ch, CURLOPT_PROGRESSFUNCTION, [$this, 'cURLProgress']);
+                        $this->printout("Do you wish to update now? [Y]es*/[N]o: ");
 
-                        $output = curl_exec($ch);
-                        curl_close($ch);
-
-                        file_put_contents($update_file, $output);
-
-                        print("\r" . $this->LINE_BUFFER);
-
-                        if ($fh = @fopen($update_file, "r")) {
-                            $blob = fgets($fh, 5);
-                            fclose($fh);
-                        }
-
-                        if (isset($blob) && strpos($blob, 'PK') !== false) {
-                            $this->printout(" done!\n");
-                            $this->printout("Unpacking...");
-
-                            $zip = false;
-                            if (class_exists("ZipArchive")) {
-                                $zip = new \ZipArchive;
-                            }
-
-                            if ($zip && $zip->open($update_file) === true) {
-                                $zip->extractTo(ROOT);
-                                $zip->close();
-                                $this->printout(" done!\n\n");
-                                unlink($update_file);
-
-                                $this->printout("Restart the script to use the new version!\n\n");
-                            } else {
-                                $this->printout(" failed\n\n");
-                                $this->printout("Extract 'update.zip' manually.\n\n");
-                            }
+                        if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
+                            $line = stream_get_line(STDIN, 1024, PHP_EOL);
                         } else {
-                            $this->printout(" failed!\n\n");
-
-                            if (file_exists($update_file) && filesize($update_file) <= 1) {
-                                unlink($update_file);
-                            }
-
-                            file_put_contents($update_file_html, '<meta http-equiv="refresh" content="0; url=' . $REMOTE_DOWNLOAD . '">Redirecting to <a href="' . $REMOTE_DOWNLOAD . '">' . $REMOTE_DOWNLOAD . '</a>...');
-
-                            $this->printout("Open 'update.html' in a web browser to download the update, then extract it manually.\n\n");
+                            $line = readline('');
                         }
 
-                        exit();
+                        if (strtolower($line) != "n" && strtolower($line) != "no") {
+                            $this->printout("\n");
+
+                            $this->LINE_BUFFER = "Downloading update package...";
+                            $this->printout($this->LINE_BUFFER);
+
+                            $ch = curl_init($REMOTE_DOWNLOAD);
+                            curl_setopt($ch, CURLOPT_USERAGENT, $this->USER_AGENT);
+                            curl_setopt($ch, CURLOPT_TIMEOUT, 300);
+                            curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
+                            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 0);
+                            curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 1);
+                            curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+                            curl_setopt($ch, CURLOPT_NOPROGRESS, false);
+                            curl_setopt($ch, CURLOPT_PROGRESSFUNCTION, [$this, 'cURLProgress']);
+
+                            $output = curl_exec($ch);
+                            curl_close($ch);
+
+                            file_put_contents($update_file, $output);
+
+                            print("\r" . $this->LINE_BUFFER);
+
+                            if ($fh = @fopen($update_file, "r")) {
+                                $blob = fgets($fh, 5);
+                                fclose($fh);
+                            }
+
+                            if (isset($blob) && strpos($blob, 'PK') !== false) {
+                                $this->printout(" done!\n");
+                                $this->printout("Unpacking...");
+
+                                $zip = false;
+                                if (class_exists("ZipArchive")) {
+                                    $zip = new \ZipArchive;
+                                }
+
+                                if ($zip && $zip->open($update_file) === true) {
+                                    $zip->extractTo(ROOT);
+                                    $zip->close();
+                                    $this->printout(" done!\n\n");
+                                    unlink($update_file);
+
+                                    $this->printout("Restart the script to use the new version!\n\n");
+                                } else {
+                                    $this->printout(" failed\n\n");
+                                    $this->printout("Extract 'update.zip' manually.\n\n");
+                                }
+                            } else {
+                                $this->printout(" failed!\n\n");
+
+                                if (file_exists($update_file) && filesize($update_file) <= 1) {
+                                    unlink($update_file);
+                                }
+
+                                file_put_contents($update_file_html, '<meta http-equiv="refresh" content="0; url=' . $REMOTE_DOWNLOAD . '">Redirecting to <a href="' . $REMOTE_DOWNLOAD . '">' . $REMOTE_DOWNLOAD . '</a>...');
+
+                                $this->printout("Open 'update.html' in a web browser to download the update, then extract it manually.\n\n");
+                            }
+
+                            exit();
+                        }
+                    } else {
+                        $this->printout(" up to date!\n");
+
+                        if (file_exists($update_file)) {
+                            unlink($update_file);
+                        }
+
+                        if (file_exists($update_file_html)) {
+                            unlink($update_file_html);
+                        }
                     }
                 } else {
-                    $this->printout(" up to date!\n");
-
-                    if (file_exists($update_file)) {
-                        unlink($update_file);
-                    }
-
-                    if (file_exists($update_file_html)) {
-                        unlink($update_file_html);
-                    }
+                    $this->printout(" failed!\n");
                 }
-            } else {
-                $this->printout(" failed!\n");
             }
         }
     }
