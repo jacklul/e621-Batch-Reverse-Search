@@ -13,7 +13,7 @@ SPATH=$(dirname $0)
 PATH=$SPATH/runtime:$PATH:
 
 if which php >/dev/null; then
-	php "$SPATH/e621BRS.phar" $@
+	php "$SPATH/app.php" $@
 else
 	echo "Install 'php-cli' package first!"
 fi
