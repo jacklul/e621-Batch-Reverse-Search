@@ -986,7 +986,5 @@ class App {
         } else {
             die("Path '" . $this->PATH_IMAGES . "' is invalid, check config!\n");
         }
-
-        echo "\x07"; // this is the beep
     }
 }
