@@ -29,7 +29,7 @@ class App {
      *
      * @var string
      */
-    private $VERSION = '1.1.7';
+    private $VERSION = '1.1.8';
 
     /**
      * App update URL
