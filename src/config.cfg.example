@@ -40,3 +40,7 @@
 ;  It should not affect the results but can help when a lot of images
 ;  are big in size (3MB or more) and fail to upload
 ;USE_CONVERSION=true
+
+; Maximum time the script waits for reply per image search
+;  Set it to higher number on weaker connections or errors like 'no reply from the server'
+;RETURN_TIMEOUT=60

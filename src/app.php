@@ -29,7 +29,7 @@ class App {
      *
      * @var string
      */
-    private $VERSION = '1.1.8';
+    private $VERSION = '1.1.9';
 
     /**
      * App update URL
@@ -172,6 +172,20 @@ class App {
      * @var string
      */
     private $LINE_BUFFER = '';
+
+    /**
+     * cURL return buffer
+     *
+     * @var string
+     */
+    private $RETURN_BUFFER = '';
+
+    /**
+     * cURL return timeout
+     *
+     * @var string
+     */
+    private $RETURN_TIMEOUT = 60;
 
     /**
      * App constructor
@@ -326,6 +340,25 @@ class App {
     }
 
     /**
+     * Continous reading of the result
+     *
+     * @param $resource
+     * @param $string
+     *
+     * @return int
+     */
+    private function cURLRead($resource, $string) {
+        $length = strlen($string);
+        $this->RETURN_BUFFER .= $string;
+
+        if (strpos($string, 'Improbable match') !== false || (strpos($string, 'Probable match:') !== false && strpos($string, 'Other results') !== false)) {
+            return 0;
+        }
+
+        return $length;
+    }
+
+    /**
      * Set 'images' path
      *
      * @param string $path
@@ -401,6 +434,10 @@ class App {
 
             if (isset($config['USE_CONVERSION'])) {
                 $this->USE_CONVERSION = $config['USE_CONVERSION'];
+            }
+
+            if (isset($config['RETURN_TIMEOUT'])) {
+                $this->RETURN_TIMEOUT = $config['RETURN_TIMEOUT'];
             }
         }
     }
@@ -616,6 +653,7 @@ class App {
             $this->printout("PATH_IMAGES_NOT_FOUND = " . $this->PATH_IMAGES_NOT_FOUND . "\n");
             $this->printout("PATH_LOGS = " . $this->PATH_LOGS . "\n");
             $this->printout("OUTPUT_HTML_FILE = " . $this->OUTPUT_HTML_FILE . "\n");
+            $this->printout("RETURN_TIMEOUT = " . $this->RETURN_TIMEOUT . "\n");
         }
 
         $this->showASCIISplash();
@@ -731,16 +769,22 @@ class App {
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
         curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 60);
+        curl_setopt($ch, CURLOPT_TIMEOUT, $this->RETURN_TIMEOUT);
+        curl_setopt($ch, CURLOPT_LOW_SPEED_TIME, $this->RETURN_TIMEOUT);
         curl_setopt($ch, CURLOPT_POST, true);
         curl_setopt($ch, CURLOPT_POSTFIELDS, $post_data);
         curl_setopt($ch, CURLOPT_NOPROGRESS, false);
         curl_setopt($ch, CURLOPT_PROGRESSFUNCTION, [$this, 'cURLProgress']);
+        curl_setopt($ch, CURLOPT_WRITEFUNCTION, [$this, 'cURLRead']);
 
         $output = curl_exec($ch);
 
         if (isset($TEMP_FILE) && file_exists($TEMP_FILE)) {
             unlink($TEMP_FILE);
+        }
+
+        if (!empty($this->RETURN_BUFFER)) {
+            $output = $this->RETURN_BUFFER;
         }
 
         if ($this->DEBUG) {
@@ -786,7 +830,7 @@ class App {
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
         curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 60);
+        curl_setopt($ch, CURLOPT_TIMEOUT, $this->RETURN_TIMEOUT);
         curl_setopt($ch, CURLOPT_NOPROGRESS, false);
         curl_setopt($ch, CURLOPT_PROGRESSFUNCTION, [$this, 'cURLProgress']);
 
@@ -959,11 +1003,11 @@ class App {
 
                         if ($this->DEBUG) {
                             file_put_contents(ROOT . '/debug_error.txt', "iqdb.harry.lu server reply:\n\n" . $results);
-                            die("Unhandled error occurred! (check 'error.txt' and contact the developer)");
+                            die("Unhandled error occurred! (check 'debug_error.txt' and contact the developer)");
                         } elseif ($this->LOGGING) {
                             $date = date("Ymd\_His");
                             file_put_contents($this->PATH_LOGS . '/error_' . $date . '.txt', "iqdb.harry.lu server reply:\n\n" . $results);
-                            $this->printout("\nWARNING: Unhandled error occurred!\n");
+                            $this->printout("\nWARNING: Unhandled error occurred! (check 'error.txt' and contact the developer)\n");
                         } else {
                             $this->printout("\nWARNING: Unhandled error occurred! Turn on DEBUG mode or LOGGING to see more details.\n");
                         }
