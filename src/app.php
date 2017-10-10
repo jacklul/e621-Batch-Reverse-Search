@@ -347,7 +347,8 @@ class App {
      *
      * @return int
      */
-    private function cURLRead($resource, $string) {
+    private function cURLRead($resource, $string)
+    {
         $length = strlen($string);
         $this->RETURN_BUFFER .= $string;
 
