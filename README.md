@@ -31,4 +31,4 @@ See [CONTRIBUTING](https://github.com/jacklul/e621-Batch-Reverse-Search/blob/mas
 
 ## License
 
-See [LICENSE](https://github.com/jacklul/e621-Batch-Reverse-Search/blob/master/LICENSE.md).
+See [LICENSE](https://github.com/jacklul/e621-Batch-Reverse-Search/blob/master/LICENSE).
