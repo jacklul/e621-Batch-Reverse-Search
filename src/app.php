@@ -29,7 +29,7 @@ class App {
      *
      * @var string
      */
-    private $VERSION = '1.1.9';
+    private $VERSION = '1.1.10';
 
     /**
      * App update URL
@@ -762,6 +762,10 @@ class App {
 
         $post_data['service[]'] = '0';
         $post_data['MAX_FILE_SIZE'] = '8388608';
+
+        if (!empty($this->RETURN_BUFFER)) {
+            $this->RETURN_BUFFER = '';
+        }
 
         $ch = curl_init();
 
