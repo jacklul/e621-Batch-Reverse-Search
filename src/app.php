@@ -29,7 +29,7 @@ class App {
      *
      * @var string
      */
-    private $VERSION = '1.1.10';
+    private $VERSION = '1.1.11';
 
     /**
      * App update URL
@@ -739,17 +739,23 @@ class App {
             if ($this->USE_CONVERSION) {
                 $mime_type = mime_content_type($file);
 
-                if ($mime_type == 'image/png') {
-                    $image = imagecreatefrompng($file);
-                } elseif ($mime_type == 'image/jpeg') {
-                    $image = imagecreatefromjpeg($file);
-                } elseif ($mime_type == 'image/gif') {
-                    $image = imagecreatefromgif($file);
+                try {
+                    if ($mime_type == 'image/png') {
+                        $image = imagecreatefrompng($file);
+                    } elseif ($mime_type == 'image/jpeg') {
+                        $image = imagecreatefromjpeg($file);
+                    } elseif ($mime_type == 'image/gif') {
+                        $image = imagecreatefromgif($file);
+                    }
+                } catch (\Throwable $e) {
+                    return ['error' => $e];
                 }
 
-                if (isset($image)) {
+                if (isset($image) && is_resource($image)) {
                     imagejpeg($image, $TEMP_FILE, 90);
                     imagedestroy($image);
+                } else {
+                    return ['error' => 'cannot create JPEG - expected resource input'];
                 }
             } elseif ($this->USE_PHPWFIO) {
                 copy($file, $TEMP_FILE);
@@ -918,6 +924,7 @@ class App {
                     $files_count++;
                     $this->printout('[' . ($files_count) . "/$files_total] Searching '" . (($this->USE_PHPWFIO) ? utf8_decode($entry):$entry) . "':\n");
 
+                    $results = null;
                     if ($this->MD5_SEARCH) {
                         $this->LINE_BUFFER = " Trying md5 sum...";
                         $this->printout($this->LINE_BUFFER);
@@ -967,6 +974,8 @@ class App {
                             $this->printout(" no reply from the server!\n");
                         } elseif ($results['error'] == 'UploadError') {
                             $this->printout(" upload error!\n");
+                        } elseif (!empty($results['error'])) {
+                            $this->printout(" error: " . $results['error'] . "\n");
                         }
                     } elseif (is_array($results) && count($results) > 0) {
                         $this->printout(" success!\n");
