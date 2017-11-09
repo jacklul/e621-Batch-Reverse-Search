@@ -2,7 +2,7 @@
 /**
  * e621 Batch Reverse Search Script
  *
- * Copyright (c) 2016 Jack'lul <https://jacklul.com>
+ * Copyright (c) 2016 Jack'lul <jacklulcat@gmail.com>
  *
  * For the full copyright and license information,
  * please view the LICENSE file that was distributed
@@ -469,7 +469,7 @@ class App {
        / /|__ \/_ | |  _ \      | |     | |    v' . $this->VERSION . (($this->DEBUG) ?  " DEBUG MODE":'') . '
   ___ / /_   ) || | | |_) | __ _| |_ ___| |__
  / _ \ \'_ \ / / | | |  _ < / _` | __/ __| \'_ \    Created by Jack\'lul
-|  __/ (_) / /_ | | | |_) | (_| | || (__| | | |       jacklul.com
+|  __/ (_) / /_ | | | |_) | (_| | || (__| | | |       jacklul.github.io
  \___|\___/____||_| |____/ \__,_|\__\___|_| |_|
  _____                                 _____                     _
 |  __ \                               / ____|                   | |
