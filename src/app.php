@@ -29,7 +29,7 @@ class App {
      *
      * @var string
      */
-    private $VERSION = '1.1.11';
+    private $VERSION = '1.1.12';
 
     /**
      * App update URL
@@ -724,6 +724,40 @@ class App {
     }
 
     /**
+     * Read the image and create image resource object
+     *
+     * @param $file
+     * @param $type
+     * @return array|null|resource
+     */
+    private function readImage($file, $type)
+    {
+        try {
+            if ($type == 'image/png') {
+                if ($this->IS_LINUX) {      // https://stackoverflow.com/q/45936271
+                    $output = `php -r "imagecreatefrompng('$file');" 2>&1`;
+
+                    if (!empty($output)) {
+                        return null;
+                    }
+                }
+
+                $image = imagecreatefrompng($file);
+            } elseif ($type == 'image/jpeg') {
+                $image = imagecreatefromjpeg($file);
+            } elseif ($type == 'image/gif') {
+                $image = imagecreatefromgif($file);
+            } else {
+                return null;
+            }
+        } catch (\Throwable $e) {
+            return ['error' => $e];
+        }
+
+        return $image;
+    }
+
+    /**
      * Perform reverse search using iqdb.harry.lu
      *
      * @param string $file
@@ -738,24 +772,15 @@ class App {
 
             if ($this->USE_CONVERSION) {
                 $mime_type = mime_content_type($file);
-
-                try {
-                    if ($mime_type == 'image/png') {
-                        $image = imagecreatefrompng($file);
-                    } elseif ($mime_type == 'image/jpeg') {
-                        $image = imagecreatefromjpeg($file);
-                    } elseif ($mime_type == 'image/gif') {
-                        $image = imagecreatefromgif($file);
-                    }
-                } catch (\Throwable $e) {
-                    return ['error' => $e];
-                }
+                $image = $this->readImage($file, $mime_type);
 
                 if (isset($image) && is_resource($image)) {
                     imagejpeg($image, $TEMP_FILE, 90);
                     imagedestroy($image);
+                } elseif (is_array($image) && isset($image['error'])) {
+                    return $image;
                 } else {
-                    return ['error' => 'cannot create JPEG - expected resource input'];
+                    return ['error' => 'NotResource'];
                 }
             } elseif ($this->USE_PHPWFIO) {
                 copy($file, $TEMP_FILE);
@@ -974,6 +999,8 @@ class App {
                             $this->printout(" no reply from the server!\n");
                         } elseif ($results['error'] == 'UploadError') {
                             $this->printout(" upload error!\n");
+                        } elseif ($results['error'] == 'NotResource') {
+                            $this->printout(" conversion failed or image is corrupted!\n");
                         } elseif (!empty($results['error'])) {
                             $this->printout(" error: " . $results['error'] . "\n");
                         }
