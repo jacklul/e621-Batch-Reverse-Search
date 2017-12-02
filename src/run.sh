@@ -1,13 +1,13 @@
 #!/bin/bash
-#
-# e621 Batch Reverse Search Script
-#
-# Copyright (c) 2016 Jack'lul <https://jacklul.com>
-#
-# For the full copyright and license information,
-# please view the LICENSE file that was distributed
-# with this source code.
-#
+# --------------------
+ # e621 Batch Reverse Search Script
+ #
+ # Copyright (c) 2016 Jack'lul <jacklulcat@gmail.com>
+ #
+ # For the full copyright and license information,
+ # please view the LICENSE file that was distributed
+ # with this source code.
+# --------------------
 
 SPATH=$(dirname $0)
 PATH=$SPATH/runtime:$PATH:
