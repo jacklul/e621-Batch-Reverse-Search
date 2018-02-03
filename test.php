@@ -1,30 +1,18 @@
 <?php
 
-define("IS_TEST", true);
+echo "Preparing..." . PHP_EOL;
 
-/* need a better way to do this... */
-@unlink('build/images/test-md5.jpg');
-@unlink('build/images/test-md5.jpeg');
-@unlink('build/images/test-md5.png');
-@unlink('build/images/test-md5.gif');
-@unlink('build/images/test-reverse_search.jpg');
-@unlink('build/images/test-reverse_search.jpeg');
-@unlink('build/images/test-reverse_search.png');
-@unlink('build/images/test-reverse_search.gif');
-@unlink('build/images/found/test-md5.jpg');
-@unlink('build/images/found/test-md5.jpeg');
-@unlink('build/images/found/test-md5.png');
-@unlink('build/images/found/test-md5.gif');
-@unlink('build/images/found/test-reverse_search.jpg');
-@unlink('build/images/found/test-reverse_search.jpeg');
-@unlink('build/images/found/test-reverse_search.png');
-@unlink('build/images/found/test-reverse_search.gif');
+$files = ['build/images/test-md5.jpg', 'build/images/test-md5.jpeg', 'build/images/test-md5.png', 'build/images/test-md5.gif', 'build/images/test-reverse_search.jpg', 'build/images/test-reverse_search.jpeg', 'build/images/test-reverse_search.png', 'build/images/test-reverse_search.gif', 'build/images/found/test-md5.jpg', 'build/images/found/test-md5.jpeg', 'build/images/found/test-md5.png', 'build/images/found/test-md5.gif', 'build/images/found/test-reverse_search.jpg', 'build/images/found/test-reverse_search.jpeg', 'build/images/found/test-reverse_search.png', 'build/images/found/test-reverse_search.gif', 'build/images/found/links.html'];
 
-if (!is_dir("build/images/")) {
-    mkdir("build/images/");
+foreach ($files as $file) {
+    @unlink($file);
 }
 
-echo "Downloading test images...";
+if (!is_dir("build/images/")) {
+    mkdir("build/images/", 0755, true);
+}
+
+echo "Downloading test image using tags 'falvie order:favcount'..." . PHP_EOL;
 
 $ch = curl_init();
 curl_setopt($ch, CURLOPT_URL, "https://e621.net/post/index.json?tags=" . urlencode("falvie order:favcount") . "&limit=1&page=1");
@@ -39,13 +27,19 @@ if (!empty($result)) {
 }
 
 if (is_array($result) && !empty($result[0]['file_url']) && !empty($result[0]['sample_url'])) {
-    file_put_contents('build/images/test-md5.' . pathinfo($result[0]['file_url'], PATHINFO_EXTENSION), file_get_contents($result[0]['file_url']));
-    file_put_contents('build/images/test-reverse_search.' . pathinfo($result[0]['sample_url'], PATHINFO_EXTENSION), file_get_contents($result[0]['sample_url']));
+    $image_full = file_get_contents($result[0]['file_url']);
+    $image_small = file_get_contents($result[0]['sample_url']);
 
-    echo " done!\nTesting...\n\n";
+    if (!$image_full || !$image_small) {
+        echo "Download failed!" . PHP_EOL;
+        exit(1);
+    }
+
+    file_put_contents('build/images/test-md5.' . pathinfo($result[0]['file_url'], PATHINFO_EXTENSION), $image_full);
+    file_put_contents('build/images/test-reverse_search.' . pathinfo($result[0]['sample_url'], PATHINFO_EXTENSION), $image_small);
 
     require_once("build/e621BRS.phar");
 } else {
-    echo " fail!\nTest cannot be performed!\n";
+    echo "API request failed!" . PHP_EOL;
     exit(1);
 }

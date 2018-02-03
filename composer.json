@@ -9,5 +9,10 @@
     "require-dev": {
         "squizlabs/php_codesniffer": "*",
 		"erusev/parsedown": "*"
-    }
+    },
+  "scripts": {
+    "check-code": [
+      "\"vendor/bin/phpcs\" -snp --standard=PSR2  --encoding=utf-8 --report-width=150 src/"
+    ]
+  }
 }
