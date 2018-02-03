@@ -16,7 +16,8 @@ define("ROOT", dirname(str_replace("phar://", "", __DIR__)));
 /**
  * Class App
  */
-class App {
+class App
+{
     /**
      * App Name
      *
