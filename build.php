@@ -1,15 +1,15 @@
 <?php
 
+if (!is_dir("build/")) {
+    mkdir("build/", 0755, true);
+}
+
 $pharName = "e621BRS";
 $srcRoot = realpath("src");
 $buildRoot = realpath("build");
 
 $buildFile = 'build/e621_Batch_Reverse_Search.zip';
 $ignoredFiles = ['.', '..', '.gitkeep', 'images', 'logs', 'config.cfg', 'debug_error.txt', 'build.zip', 'e621_Batch_Reverse_Search.zip', '.updatecheck'];
-
-if (!is_dir("build/")) {
-    mkdir("build/", 0755, true);
-}
 
 if (ini_get("phar.readonly") == 0) {
     echo "Building...\n";
