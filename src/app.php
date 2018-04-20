@@ -30,7 +30,7 @@ class App
      *
      * @var string
      */
-    private $VERSION = '1.1.12';
+    private $VERSION = '1.2.0';
 
     /**
      * App update URL
@@ -131,6 +131,13 @@ class App
      * @var string
      */
     private $USE_CONVERSION = true;
+
+    /**
+     * Use 'saucenao.com' as additional service for reverse search
+     *
+     * @var string
+     */
+    private $USE_DUAL_SEARCH = true;
 
     /**
      * Is the main loop running? (for signal handler)
@@ -436,6 +443,10 @@ class App
 
             if (isset($config['USE_CONVERSION'])) {
                 $this->USE_CONVERSION = $config['USE_CONVERSION'];
+            }
+
+            if (isset($config['USE_DUAL_SEARCH'])) {
+                $this->USE_DUAL_SEARCH = $config['USE_DUAL_SEARCH'];
             }
 
             if (isset($config['RETURN_TIMEOUT'])) {
@@ -852,6 +863,106 @@ class App
     }
 
     /**
+     * Perform reverse search using saucenao.com
+     *
+     * @param string $file
+     * @return array|string|bool
+     */
+    private function reverseSearchAlt($file)
+    {
+        $post_data = [];
+
+        if ($this->USE_PHPWFIO || $this->USE_CONVERSION) {
+            $TEMP_FILE = tempnam(sys_get_temp_dir(), "Y69");
+
+            if ($this->USE_CONVERSION) {
+                $mime_type = mime_content_type($file);
+                $image = $this->readImage($file, $mime_type);
+
+                if (isset($image) && is_resource($image)) {
+                    imagejpeg($image, $TEMP_FILE, 90);
+                    imagedestroy($image);
+                } elseif (is_array($image) && isset($image['error'])) {
+                    return $image;
+                } else {
+                    return ['error' => 'NotResource'];
+                }
+            } elseif ($this->USE_PHPWFIO) {
+                copy($file, $TEMP_FILE);
+            }
+
+            $post_data['file'] = new \CurlFile($TEMP_FILE, mime_content_type($TEMP_FILE), basename($TEMP_FILE));
+        } else {
+            $post_data['file'] = new \CurlFile($file, mime_content_type($file), basename($file));
+        }
+
+        $post_data['url'] = '';
+        $post_data['frame'] = '1';
+        $post_data['hide'] = '0';
+        $post_data['database'] = '999';
+
+        if (!empty($this->RETURN_BUFFER)) {
+            $this->RETURN_BUFFER = '';
+        }
+
+        $ch = curl_init();
+
+        curl_setopt($ch, CURLOPT_URL, "http://saucenao.com/search.php");
+        curl_setopt($ch, CURLOPT_USERAGENT, $this->USER_AGENT);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
+        curl_setopt($ch, CURLOPT_TIMEOUT, $this->RETURN_TIMEOUT);
+        curl_setopt($ch, CURLOPT_LOW_SPEED_TIME, $this->RETURN_TIMEOUT);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $post_data);
+        curl_setopt($ch, CURLOPT_NOPROGRESS, false);
+        curl_setopt($ch, CURLOPT_PROGRESSFUNCTION, [$this, 'cURLProgress']);
+        curl_setopt($ch, CURLOPT_WRITEFUNCTION, [$this, 'cURLRead']);
+
+        $output = curl_exec($ch);
+
+        if (isset($TEMP_FILE) && file_exists($TEMP_FILE)) {
+            unlink($TEMP_FILE);
+        }
+
+        if (!empty($this->RETURN_BUFFER)) {
+            $output = $this->RETURN_BUFFER;
+        }
+
+        if ($this->DEBUG) {
+            print "\nOUTPUT:\n" . $output . "\n";
+        }
+
+        $matches_all = [];
+        if (preg_match_all("/href\=.*?e621\.net.*?\/show\/(\d+)/", $output, $matches)) {
+            $matches_all = array_merge($matches_all, $matches[1]);
+        }
+
+        if (preg_match_all("/resultcontentcolumn.*?<strong>(.*?): <\/strong><a href=\"(.*?)\".*?result-hidden-notification/", $output, $matches)) {
+            $matches_all = array_merge($matches_all, $matches[2]);
+        }
+
+        if (!empty($matches_all)) {
+            return $matches_all;
+        }
+
+        if (empty($output)) {
+            return ['error' => 'EmptyResult'];
+        }
+
+        if (strpos($output, 'Low similarity results have been hidden. Click here to display them...') !== false) {
+            return ['error' => 'NoResults'];
+        }
+
+        if (strpos($output, 'If an image was provided, it may not be loading properly, or may not be in an acceptable format...') !== false) {
+            return ['error' => 'NotResource'];
+        }
+
+        return $output;
+    }
+
+    /**
      * Make a query to e621 API
      *
      * @param string $tags
@@ -882,6 +993,30 @@ class App
         }
 
         return $output;
+    }
+
+    /**
+     * Parse error name
+     *
+     * @param $error
+     */
+    private function parseError($error)
+    {
+        if ($error == 'NoResults') {
+            $this->printout(" no matching images found!\n");
+        } elseif ($error == 'NotImage') {
+            $this->printout(" not a valid image!\n");
+        } elseif ($error == 'EmptyResult') {
+            $this->printout(" no reply from the server!\n");
+        } elseif ($error == 'UploadError') {
+            $this->printout(" upload error!\n");
+        } elseif ($error == 'NotResource') {
+            $this->printout(" conversion failed or image is corrupted!\n");
+        } elseif (!empty($error)) {
+            $this->printout(" error: " . $error . "\n");
+        } else {
+            $this->printout(" empty response!\n");
+        }
     }
 
     /**
@@ -977,12 +1112,28 @@ class App
                         }
 
                         if ($this->REVERSE_SEARCH) {
-                            $this->LINE_BUFFER = " Trying reverse search...";
+                            if ($this->USE_DUAL_SEARCH) {
+                                $this->LINE_BUFFER = " Trying reverse search #1 (iqdb.harry.lu)...";
+                            } else {
+                                $this->LINE_BUFFER = " Trying reverse search...";
+                            }
+
                             $this->printout($this->LINE_BUFFER);
 
                             $results = $this->reverseSearch($this->PATH_IMAGES . '/' . $entry);
 
                             print("\r" . $this->LINE_BUFFER);
+
+                            if ($this->USE_DUAL_SEARCH && (!is_array($results) || isset($results['error']))) {
+                                $this->parseError($results['error']);
+
+                                $this->LINE_BUFFER = " Trying reverse search #2 (saucenao.com)...";
+                                $this->printout($this->LINE_BUFFER);
+
+                                $results = $this->reverseSearchAlt($this->PATH_IMAGES . '/' . $entry);
+
+                                print("\r" . $this->LINE_BUFFER);
+                            }
                         }
                     }
 
@@ -991,19 +1142,10 @@ class App
                     }
 
                     if (isset($results['error'])) {
+                        $this->parseError($results['error']);
+
                         if ($results['error'] == 'NoResults') {
-                            $this->printout(" no matching images found!\n");
                             $this->safeRename($this->PATH_IMAGES . '/' . $entry, $this->PATH_IMAGES_NOT_FOUND . '/' . $entry);
-                        } elseif ($results['error'] == 'NotImage') {
-                            $this->printout(" not a valid image!\n");
-                        } elseif ($results['error'] == 'EmptyResult') {
-                            $this->printout(" no reply from the server!\n");
-                        } elseif ($results['error'] == 'UploadError') {
-                            $this->printout(" upload error!\n");
-                        } elseif ($results['error'] == 'NotResource') {
-                            $this->printout(" conversion failed or image is corrupted!\n");
-                        } elseif (!empty($results['error'])) {
-                            $this->printout(" error: " . $results['error'] . "\n");
                         }
                     } elseif (is_array($results) && count($results) > 0) {
                         $this->printout(" success!\n");
@@ -1016,11 +1158,21 @@ class App
                         $html_output = '';
                         $results_text = '';
                         for ($i = 0; $i < count($results); $i++) {
-                            $results_text .= '  https://e621.net/post/show/' . $results[$i] . "\n";
+
+                            if (is_numeric($results[$i])) {
+                                $results_text .= '  https://e621.net/post/show/' . $results[$i] . "\n";
+                            } else {
+                                $results_text .= '  ' . $results[$i] . "\n";
+                            }
 
                             if ($this->OUTPUT_HTML) {
                                 if (empty($html_existing_contents) || (!empty($html_existing_contents) && !strpos($html_existing_contents, 'e621.net/post/show/' . $results[$i]))) {
-                                    $html_output .= '&nbsp;<a href="https://e621.net/post/show/' . $results[$i] . '" target="_blank">https://e621.net/post/show/' . $results[$i] . '</a>' . "\n<br>\n";
+
+                                    if (is_numeric($results[$i])) {
+                                        $html_output .= '&nbsp;<a href="https://e621.net/post/show/' . $results[$i] . '" target="_blank">https://e621.net/post/show/' . $results[$i] . '</a>' . "\n<br>\n";
+                                    } else {
+                                        $html_output .= '&nbsp;<a href="' . $results[$i] . '" target="_blank">' . $results[$i] . '</a>' . "\n<br>\n";
+                                    }
                                 }
                             }
                         }
@@ -1044,11 +1196,11 @@ class App
                         $this->printout(" failed!\n");
 
                         if ($this->DEBUG) {
-                            file_put_contents(ROOT . '/debug_error.txt', "iqdb.harry.lu server reply:\n\n" . $results);
+                            file_put_contents(ROOT . '/debug_error.txt', "server reply:\n\n" . $results);
                             die("Unhandled error occurred! (check 'debug_error.txt' and contact the developer)");
                         } elseif ($this->LOGGING) {
                             $date = date("Ymd\_His");
-                            file_put_contents($this->PATH_LOGS . '/error_' . $date . '.txt', "iqdb.harry.lu server reply:\n\n" . $results);
+                            file_put_contents($this->PATH_LOGS . '/error_' . $date . '.txt', "server reply:\n\n" . $results);
                             $this->printout("\nWARNING: Unhandled error occurred! (check 'error.txt' and contact the developer)\n");
                         } else {
                             $this->printout("\nWARNING: Unhandled error occurred! Turn on DEBUG mode or LOGGING to see more details.\n");
