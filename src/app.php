@@ -341,7 +341,7 @@ class App
         }
 
         if ($total > 0) {
-            print (str_repeat(' ', 10) . "\r" . $this->LINE_BUFFER . ' ' . round(($progress * 100) / $total, 0)) . "%";
+            print(str_repeat(' ', 10) . "\r" . $this->LINE_BUFFER . ' ' . round(($progress * 100) / $total, 0)) . "%";
         }
 
         usleep(100);
@@ -1158,7 +1158,6 @@ class App
                         $html_output = '';
                         $results_text = '';
                         for ($i = 0; $i < count($results); $i++) {
-
                             if (is_numeric($results[$i])) {
                                 $results_text .= '  https://e621.net/post/show/' . $results[$i] . "\n";
                             } else {
@@ -1167,7 +1166,6 @@ class App
 
                             if ($this->OUTPUT_HTML) {
                                 if (empty($html_existing_contents) || (!empty($html_existing_contents) && !strpos($html_existing_contents, 'e621.net/post/show/' . $results[$i]))) {
-
                                     if (is_numeric($results[$i])) {
                                         $html_output .= '&nbsp;<a href="https://e621.net/post/show/' . $results[$i] . '" target="_blank">https://e621.net/post/show/' . $results[$i] . '</a>' . "\n<br>\n";
                                     } else {
