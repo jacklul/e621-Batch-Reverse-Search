@@ -1,6 +1,8 @@
 # e621 Batch Reverse Search [![Build Status](https://travis-ci.org/jacklul/e621-Batch-Reverse-Search.svg?branch=master)](https://travis-ci.org/jacklul/e621-Batch-Reverse-Search)
 
-A script that iterates over a directory and performs a reverse search for every image using [iqdb.harry.lu](http://iqdb.harry.lu/) and [saucenao.com](https://saucenao.com) services.
+A script that iterates over a directory and performs a reverse search for every image using remote services.
+
+Currently supported services: [iqdb.harry.lu](http://iqdb.harry.lu/) and [saucenao.com](https://saucenao.com).
 
 ## Requirements:
 
