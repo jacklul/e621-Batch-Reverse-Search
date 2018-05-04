@@ -44,6 +44,9 @@
 ; Use 'saucenao.com' as additional service for reverse search (default: true)
 ;USE_DUAL_SEARCH=true
 
-; Maximum time the script waits for reply per image search
+; Forces searching on all services even when links are already found (default: false)
+;FORCE_DUAL_SEARCH=false
+
+; Maximum time the script waits for reply per image search (default: 60)
 ;  Set it to higher number on weaker connections or errors like 'no reply from the server'
 ;RETURN_TIMEOUT=60

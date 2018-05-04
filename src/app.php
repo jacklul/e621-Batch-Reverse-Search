@@ -140,6 +140,13 @@ class App
     private $USE_DUAL_SEARCH = true;
 
     /**
+     * Forces searching on all services even when links are already found
+     *
+     * @var string
+     */
+    private $FORCE_DUAL_SEARCH = false;
+
+    /**
      * Is the main loop running? (for signal handler)
      *
      * @var bool
@@ -447,6 +454,10 @@ class App
 
             if (isset($config['USE_DUAL_SEARCH'])) {
                 $this->USE_DUAL_SEARCH = $config['USE_DUAL_SEARCH'];
+            }
+
+            if (isset($config['FORCE_DUAL_SEARCH'])) {
+                $this->FORCE_DUAL_SEARCH = $config['FORCE_DUAL_SEARCH'];
             }
 
             if (isset($config['RETURN_TIMEOUT'])) {
@@ -1092,6 +1103,8 @@ class App
 
                     $results = null;
                     if ($this->MD5_SEARCH) {
+                        $service = 'e621.net';
+
                         $this->LINE_BUFFER = " Trying md5 sum...";
                         $this->printout($this->LINE_BUFFER);
 
@@ -1117,6 +1130,8 @@ class App
                         }
 
                         if ($this->REVERSE_SEARCH) {
+                            $service = 'iqdb.harry.lu';
+
                             if ($this->USE_DUAL_SEARCH) {
                                 $this->LINE_BUFFER = " Trying reverse search #1 (iqdb.harry.lu)...";
                             } else {
@@ -1129,13 +1144,35 @@ class App
 
                             print("\r" . $this->LINE_BUFFER);
 
-                            if ($this->USE_DUAL_SEARCH && (!is_array($results) || isset($results['error']))) {
-                                $this->parseError($results['error']);
+                            if ($this->USE_DUAL_SEARCH && (!is_array($results) || isset($results['error']) || $this->FORCE_DUAL_SEARCH)) {
+                                if ($this->FORCE_DUAL_SEARCH) {
+                                    $results_prev = null;
+                                    if (is_array($results) && count($results) > 0 && !isset($results['error'])) {
+                                        $results_prev = $results;
+                                        $this->printout(" success!\n");
+                                    }
+
+                                    $service_prev = $service;
+                                }
+
+                                $service = 'saucenao.com';
+
+                                if (isset($results['error']) || !is_array($results)) {
+                                    $this->parseError($results['error']);
+                                }
 
                                 $this->LINE_BUFFER = " Trying reverse search #2 (saucenao.com)...";
                                 $this->printout($this->LINE_BUFFER);
 
                                 $results = $this->reverseSearchAlt($this->PATH_IMAGES . '/' . $entry);
+
+                                if ($this->FORCE_DUAL_SEARCH) {
+                                    if ($results_prev !== null) {
+                                        $results = array_merge($results_prev, $results);
+                                        $results = array_unique($results);
+                                        $service = $service_prev . ', ' . $service;
+                                    }
+                                }
 
                                 print("\r" . $this->LINE_BUFFER);
                             }
@@ -1154,6 +1191,7 @@ class App
                         }
                     } elseif (is_array($results) && count($results) > 0) {
                         $this->printout(" success!\n");
+
                         $files_found++;
 
                         if ($this->OUTPUT_HTML) {
