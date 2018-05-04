@@ -535,6 +535,11 @@ class App
                     if (version_compare($this->VERSION, $REMOTE_VERSION, '<')) {
                         $this->printout(" update available (v" . $REMOTE_VERSION . ")\n");
 
+                        if (!empty($update_check['body'])) {
+                            $this->printout("\nUpdate summary:\n");
+                            $this->printout("\n" . $update_check['body'] . "\n\n");
+                        }
+
                         $this->printout("Do you wish to update now? [Y]es*/[N]o: ");
 
                         if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
