@@ -137,14 +137,14 @@ class App
      *
      * @var string
      */
-    private $USE_DUAL_SEARCH = true;
+    private $USE_MULTI_SEARCH = true;
 
     /**
      * Forces searching on all services even when links are already found
      *
      * @var string
      */
-    private $FORCE_DUAL_SEARCH = false;
+    private $FORCE_MULTI_SEARCH = false;
 
     /**
      * Is the main loop running? (for signal handler)
@@ -452,12 +452,12 @@ class App
                 $this->USE_CONVERSION = $config['USE_CONVERSION'];
             }
 
-            if (isset($config['USE_DUAL_SEARCH'])) {
-                $this->USE_DUAL_SEARCH = $config['USE_DUAL_SEARCH'];
+            if (isset($config['USE_MULTI_SEARCH'])) {
+                $this->USE_MULTI_SEARCH = $config['USE_MULTI_SEARCH'];
             }
 
-            if (isset($config['FORCE_DUAL_SEARCH'])) {
-                $this->FORCE_DUAL_SEARCH = $config['FORCE_DUAL_SEARCH'];
+            if (isset($config['FORCE_MULTI_SEARCH'])) {
+                $this->FORCE_MULTI_SEARCH = $config['FORCE_MULTI_SEARCH'];
             }
 
             if (isset($config['RETURN_TIMEOUT'])) {
@@ -1132,7 +1132,7 @@ class App
                         if ($this->REVERSE_SEARCH) {
                             $service = 'iqdb.harry.lu';
 
-                            if ($this->USE_DUAL_SEARCH) {
+                            if ($this->USE_MULTI_SEARCH) {
                                 $this->LINE_BUFFER = " Trying reverse search #1 (iqdb.harry.lu)...";
                             } else {
                                 $this->LINE_BUFFER = " Trying reverse search...";
@@ -1144,8 +1144,8 @@ class App
 
                             print("\r" . $this->LINE_BUFFER);
 
-                            if ($this->USE_DUAL_SEARCH && (!is_array($results) || isset($results['error']) || $this->FORCE_DUAL_SEARCH)) {
-                                if ($this->FORCE_DUAL_SEARCH) {
+                            if ($this->USE_MULTI_SEARCH && (!is_array($results) || isset($results['error']) || $this->FORCE_MULTI_SEARCH)) {
+                                if ($this->FORCE_MULTI_SEARCH) {
                                     $results_prev = null;
                                     if (is_array($results) && count($results) > 0 && !isset($results['error'])) {
                                         $results_prev = $results;
@@ -1166,7 +1166,7 @@ class App
 
                                 $results = $this->reverseSearchAlt($this->PATH_IMAGES . '/' . $entry);
 
-                                if ($this->FORCE_DUAL_SEARCH) {
+                                if ($this->FORCE_MULTI_SEARCH) {
                                     if ($results_prev !== null) {
                                         $results = array_merge($results_prev, $results);
                                         $results = array_unique($results);
