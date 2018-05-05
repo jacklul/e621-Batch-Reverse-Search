@@ -1051,13 +1051,13 @@ class App
 
             if ($handle = opendir($this->PATH_IMAGES)) {
                 while (false !== ($entry = readdir($handle))) {
-                    if ($entry != "." && $entry != ".." && !is_dir($this->PATH_IMAGES . '/' . $entry)) {
+                    if ($entry != "." && $entry != ".." && $entry != "desktop.ini" && !is_dir($this->PATH_IMAGES . '/' . $entry)) {
                         $file_size = filesize($this->PATH_IMAGES . '/' . $entry);
                         $image_size = getimagesize($this->PATH_IMAGES . '/' . $entry);
 
                         if (urlencode($entry) != $entry && !$this->USE_PHPWFIO && !$this->IS_LINUX) {
                             $files_error['encoding'] = true;
-                        } elseif (!in_array(pathinfo($entry, PATHINFO_EXTENSION), array('jpg', 'jpeg', 'png', 'gif'))) {
+                        } elseif (!in_array(strtolower(pathinfo($entry, PATHINFO_EXTENSION)), array('jpg', 'jpeg', 'png', 'gif'))) {
                             $files_error['file_type'] = true;
                         } elseif (!$this->USE_CONVERSION && $file_size > 8388608) {
                             $files_error['file_size'] = true;
