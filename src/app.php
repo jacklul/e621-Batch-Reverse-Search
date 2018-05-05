@@ -30,7 +30,7 @@ class App
      *
      * @var string
      */
-    private $VERSION = '1.3.0';
+    private $VERSION = '1.3.1';
 
     /**
      * App update URL
@@ -915,7 +915,7 @@ class App
         $post_data['url'] = '';
         $post_data['frame'] = '1';
         $post_data['hide'] = '0';
-        $post_data['database'] = '999';
+        $post_data['database'] = '29';  // 999 - all, 29 - e621 only
 
         if (!empty($this->RETURN_BUFFER)) {
             $this->RETURN_BUFFER = '';
@@ -951,12 +951,26 @@ class App
         }
 
         $matches_all = [];
-        if (preg_match_all("/href\=.*?e621\.net.*?\/show\/(\d+)/", $output, $matches)) {
-            $matches_all = array_merge($matches_all, $matches[1]);
+        if (strpos($output, 'Low similarity results have been hidden. Click here to display them...') !== false) {
+            if (preg_match_all("/href\=.*?e621\.net.*?\/show\/(\d+).*?result-hidden-notification/", $output, $matches)) {
+                $matches_all = array_merge($matches_all, $matches[1]);
+            }
+        } else {
+            if (preg_match_all("/href\=.*?e621\.net.*?\/show\/(\d+)/", $output, $matches)) {
+                $matches_all = array_merge($matches_all, $matches[1]);
+            }
         }
 
-        if (preg_match_all("/resultcontentcolumn.*?<strong>(.*?): <\/strong><a href=\"(.*?)\".*?result-hidden-notification/", $output, $matches)) {
-            $matches_all = array_merge($matches_all, $matches[2]);
+        if ($post_data['database'] == 999) {
+            if (strpos($output, 'id="result-hidden-notification"') !== false) {
+                if (preg_match_all("/resultcontentcolumn.*?<strong>(.*?): <\/strong><a href=\"(.*?)\".*?result-hidden-notification/", $output, $matches)) {
+                    $matches_all = array_merge($matches_all, $matches[2]);
+                }
+            } else {
+                if (preg_match_all("/resultcontentcolumn.*?<strong>(.*?): <\/strong><a href=\"(.*?)\"/", $output, $matches)) {
+                    $matches_all = array_merge($matches_all, $matches[2]);
+                }
+            }
         }
 
         if (!empty($matches_all)) {
@@ -1201,6 +1215,10 @@ class App
                         $html_output = '';
                         $results_text = '';
                         for ($i = 0; $i < count($results); $i++) {
+                            if (empty($results[$i])) {
+                                continue;
+                            }
+
                             if (is_numeric($results[$i])) {
                                 $results_text .= '  https://e621.net/post/show/' . $results[$i] . "\n";
                             } else {
@@ -1208,7 +1226,7 @@ class App
                             }
 
                             if ($this->OUTPUT_HTML) {
-                                if (empty($html_existing_contents) || (!empty($html_existing_contents) && !empty($results[$i]))) {
+                                if (empty($html_existing_contents) || (!empty($html_existing_contents))) {
                                     if (is_numeric($results[$i])) {
                                         $html_output .= '&nbsp;<a href="https://e621.net/post/show/' . $results[$i] . '" target="_blank">https://e621.net/post/show/' . $results[$i] . '</a>' . " ($service)\n<br>\n";
                                     } else {
@@ -1270,22 +1288,19 @@ class App
                                 file_put_contents($this->OUTPUT_HTML_FILE, "<b class=\"text-hover-image\">" . ($entry) . "</b>:\n<br>\n$html_output<br>\n", FILE_APPEND | LOCK_EX);
                             }
                         } else {
-                            file_put_contents($this->PATH_IMAGES_FOUND . '/' . $entry . '.txt', "  " . trim(strip_tags($results_text)) . "\n", FILE_APPEND);
+                            file_put_contents($this->PATH_IMAGES_FOUND . '/' . $entry . '.txt', "  " . trim(strip_tags($results_text)) . "\n");
                         }
 
                         $this->safeRename($this->PATH_IMAGES . '/' . $entry, $this->PATH_IMAGES_FOUND . '/' . $entry);
                     } elseif ($this->REVERSE_SEARCH) {
                         $this->printout(" failed!\n");
 
-                        if ($this->DEBUG) {
-                            file_put_contents(ROOT . '/debug_error.txt', "server reply:\n\n" . $results);
-                            die("Unhandled error occurred! (check 'debug_error.txt' and contact the developer)");
-                        } elseif ($this->LOGGING) {
+                        if ($this->LOGGING) {
                             $date = date("Ymd\_His");
-                            file_put_contents($this->PATH_LOGS . '/error_' . $date . '.txt', "server reply:\n\n" . $results);
-                            $this->printout("\nWARNING: Unhandled error occurred! (check 'error.txt' and contact the developer)\n");
+                            file_put_contents($this->PATH_LOGS . '/raw_result_' . $date . '.html', $results);
+                            $this->printout("\nWARNING: Unhandled error occurred! See '" . $this->PATH_LOGS . '/raw_result_' . $date . '.html' . "' for service reply.\n");
                         } else {
-                            $this->printout("\nWARNING: Unhandled error occurred! Turn on DEBUG mode or LOGGING to see more details.\n");
+                            $this->printout("\nWARNING: Unhandled error occurred! Turn on LOGGING to see more details!\n");
                         }
                     }
 

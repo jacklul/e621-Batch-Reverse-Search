@@ -12,7 +12,7 @@ if (!is_dir("build/images/")) {
     mkdir("build/images/", 0755, true);
 }
 
-echo "Downloading test image using tags 'falvie order:favcount'..." . PHP_EOL;
+echo "Downloading test images using tags 'falvie order:favcount'..." . PHP_EOL;
 
 $ch = curl_init();
 curl_setopt($ch, CURLOPT_URL, "https://e621.net/post/index.json?tags=" . urlencode("falvie order:favcount") . "&limit=1&page=1");
