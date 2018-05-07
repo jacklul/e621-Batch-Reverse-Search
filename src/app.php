@@ -1006,7 +1006,7 @@ class App
             }
         } elseif (strpos($output, 'You need an Image') !== false) {
             return ['error' => 'NotImage'];
-        } elseif (strpos($output, 'Low similarity results have been hidden. Click here to display them...') !== false) {
+        } elseif (strpos($output, 'Low similarity results have been hidden.') !== false) {
             return ['error' => 'NoResults'];
         }
 
