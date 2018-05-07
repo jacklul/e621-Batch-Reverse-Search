@@ -987,16 +987,14 @@ class App
 
         $result = json_decode($output, true);
 
-        $matches_all = [];
+        $matches = [];
         if (isset($result['header']['status'])) {
             if ($result['header']['status'] === 0) {
                 foreach ($result['results'] as $this_result) {
-                    if ($this_result['header']['similarity'] > 40) {
-                        $matches_all[] = $this_result['data']['ext_urls'][0];
-                    }
+                    $matches[] = $this_result['data']['ext_urls'][0];
                 }
 
-                return $matches_all;
+                return $matches;
             } else {
                 if ($result['header']['short_remaining'] === 0) {
                     return ['error' => 'ShortLimitReached'];
