@@ -878,7 +878,7 @@ class App
         }
 
         if (preg_match_all("/Probable match.*?href='(.*?e621\.net.*?\/show\/\d+)/", $output, $matches)) {
-            return count($matches[1]) >= 10 ? array_slice($matches[1], 0, 10) : $matches[1];
+            return count($matches[1]) > 10 ? array_slice($matches[1], 0, 10) : $matches[1];
         }
 
         if (empty($output)) {
