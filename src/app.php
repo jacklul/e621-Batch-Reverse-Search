@@ -30,7 +30,7 @@ class App
      *
      * @var string
      */
-    private $VERSION = '1.3.1';
+    private $VERSION = '1.3.2';
 
     /**
      * App update URL
@@ -128,23 +128,37 @@ class App
     /**
      * Convert image into JPEG with '90' quality before uploading
      *
-     * @var string
+     * @var bool
      */
     private $USE_CONVERSION = true;
 
     /**
      * Use 'saucenao.com' as additional service for reverse search
      *
-     * @var string
+     * @var bool
      */
     private $USE_MULTI_SEARCH = true;
 
     /**
      * Forces searching on all services even when links are already found
      *
-     * @var string
+     * @var bool
      */
     private $FORCE_MULTI_SEARCH = false;
+
+    /**
+     * API key for 'saucenao.com' service
+     *
+     * @var string
+     */
+    private $SAUCENAO_API_KEY = '';
+
+    /**
+     * Whenever to search all image sites supported by 'saucenao.com'
+     *
+     * @var bool
+     */
+    private $SAUCENAO_SEARCH_ALL = false;
 
     /**
      * Is the main loop running? (for signal handler)
@@ -458,6 +472,14 @@ class App
 
             if (isset($config['FORCE_MULTI_SEARCH'])) {
                 $this->FORCE_MULTI_SEARCH = $config['FORCE_MULTI_SEARCH'];
+            }
+
+            if (isset($config['SAUCENAO_API_KEY'])) {
+                $this->SAUCENAO_API_KEY = $config['SAUCENAO_API_KEY'];
+            }
+
+            if (isset($config['SAUCENAO_SEARCH_ALL'])) {
+                $this->SAUCENAO_SEARCH_ALL = $config['SAUCENAO_SEARCH_ALL'];
             }
 
             if (isset($config['RETURN_TIMEOUT'])) {
@@ -855,8 +877,8 @@ class App
             print "\nOUTPUT:\n" . $output . "\n";
         }
 
-        if (preg_match_all("/Probable match.*?href\=.*?e621\.net.*?\/show\/(\d+)/", $output, $matches)) {
-            return $matches[1];
+        if (preg_match_all("/Probable match.*?href='(.*?e621\.net.*?\/show\/\d+)/", $output, $matches)) {
+            return count($matches[1]) >= 10 ? array_slice($matches[1], 0, 10) : $matches[1];
         }
 
         if (empty($output)) {
@@ -871,7 +893,7 @@ class App
             return ['error' => 'NotImage'];
         }
 
-        if (strpos($output, 'Upload error ')) {
+        if (strpos($output, 'Upload error')) {
             return ['error' => 'UploadError'];
         }
 
@@ -915,7 +937,20 @@ class App
         $post_data['url'] = '';
         $post_data['frame'] = '1';
         $post_data['hide'] = '0';
-        $post_data['database'] = '29';  // 999 - all, 29 - e621 only
+        $post_data['numres'] = '10';
+
+        if ($this->SAUCENAO_SEARCH_ALL) {
+            $post_data['database'] = '999';
+
+        } else {
+            $post_data['database'] = '29';
+        }
+
+        if (!empty($this->SAUCENAO_API_KEY)) {
+            $post_data['api_key'] = $this->SAUCENAO_API_KEY;
+        }
+
+        $post_data['output_type'] = 2;
 
         if (!empty($this->RETURN_BUFFER)) {
             $this->RETURN_BUFFER = '';
@@ -950,43 +985,29 @@ class App
             print "\nOUTPUT:\n" . $output . "\n";
         }
 
+        $result = json_decode($output, true);
+
         $matches_all = [];
-        if (strpos($output, 'Low similarity results have been hidden. Click here to display them...') !== false) {
-            if (preg_match_all("/href\=.*?e621\.net.*?\/show\/(\d+).*?result-hidden-notification/", $output, $matches)) {
-                $matches_all = array_merge($matches_all, $matches[1]);
-            }
-        } else {
-            if (preg_match_all("/href\=.*?e621\.net.*?\/show\/(\d+)/", $output, $matches)) {
-                $matches_all = array_merge($matches_all, $matches[1]);
-            }
-        }
-
-        if ($post_data['database'] == 999) {
-            if (strpos($output, 'id="result-hidden-notification"') !== false) {
-                if (preg_match_all("/resultcontentcolumn.*?<strong>(.*?): <\/strong><a href=\"(.*?)\".*?result-hidden-notification/", $output, $matches)) {
-                    $matches_all = array_merge($matches_all, $matches[2]);
+        if (isset($result['header']['status'])) {
+            if ($result['header']['status'] === 0) {
+                foreach ($result['results'] as $this_result) {
+                    if ($this_result['header']['similarity'] > 40) {
+                        $matches_all[] = $this_result['data']['ext_urls'][0];
+                    }
                 }
+
+                return $matches_all;
             } else {
-                if (preg_match_all("/resultcontentcolumn.*?<strong>(.*?): <\/strong><a href=\"(.*?)\"/", $output, $matches)) {
-                    $matches_all = array_merge($matches_all, $matches[2]);
+                if ($result['header']['short_remaining'] === 0) {
+                    return ['error' => 'ShortLimitReached'];
+                } elseif ($result['header']['long_remaining'] === 0) {
+                    return ['error' => 'LimitReached'];
                 }
             }
-        }
-
-        if (!empty($matches_all)) {
-            return $matches_all;
-        }
-
-        if (empty($output)) {
-            return ['error' => 'EmptyResult'];
-        }
-
-        if (strpos($output, 'Low similarity results have been hidden. Click here to display them...') !== false) {
+        } elseif (strpos($output, 'You need an Image') !== false) {
+            return ['error' => 'NotImage'];
+        } elseif (strpos($output, 'Low similarity results have been hidden. Click here to display them...') !== false) {
             return ['error' => 'NoResults'];
-        }
-
-        if (strpos($output, 'If an image was provided, it may not be loading properly, or may not be in an acceptable format...') !== false) {
-            return ['error' => 'NotResource'];
         }
 
         return $output;
@@ -1042,6 +1063,11 @@ class App
             $this->printout(" upload error!\n");
         } elseif ($error == 'NotResource') {
             $this->printout(" conversion failed or image is corrupted!\n");
+        } elseif ($error == 'ShortLimitReached') {
+            $this->printout(" burst limit reached, sleeping for 60 seconds!\n");
+            sleep(60);
+        } elseif ($error == 'LimitReached') {
+            $this->printout(" exceeded daily search limit!\n");
         } elseif (!empty($error)) {
             $this->printout(" error: " . $error . "\n");
         } else {
@@ -1181,7 +1207,7 @@ class App
                                 $results = $this->reverseSearchAlt($this->PATH_IMAGES . '/' . $entry);
 
                                 if ($this->FORCE_MULTI_SEARCH) {
-                                    if ($results_prev !== null) {
+                                    if (isset($results_prev) && isset($service_prev) && $results_prev !== null) {
                                         $results = array_merge($results_prev, $results);
                                         $results = array_unique($results);
                                         $service = $service_prev . ', ' . $service;
@@ -1207,11 +1233,6 @@ class App
                         $this->printout(" success!\n");
 
                         $files_found++;
-
-                        if ($this->OUTPUT_HTML) {
-                            $html_existing_contents = file_get_contents($this->OUTPUT_HTML_FILE);
-                        }
-
                         $html_output = '';
                         $results_text = '';
                         for ($i = 0; $i < count($results); $i++) {
@@ -1219,20 +1240,10 @@ class App
                                 continue;
                             }
 
-                            if (is_numeric($results[$i])) {
-                                $results_text .= '  https://e621.net/post/show/' . $results[$i] . "\n";
-                            } else {
-                                $results_text .= '  ' . $results[$i] . "\n";
-                            }
+                            $results_text .= '  ' . $results[$i] . "\n";
 
                             if ($this->OUTPUT_HTML) {
-                                if (empty($html_existing_contents) || (!empty($html_existing_contents))) {
-                                    if (is_numeric($results[$i])) {
-                                        $html_output .= '&nbsp;<a href="https://e621.net/post/show/' . $results[$i] . '" target="_blank">https://e621.net/post/show/' . $results[$i] . '</a>' . " ($service)\n<br>\n";
-                                    } else {
-                                        $html_output .= '&nbsp;<a href="' . $results[$i] . '" target="_blank">' . $results[$i] . '</a>' . " ($service)\n<br>\n";
-                                    }
-                                }
+                                $html_output .= '&nbsp;<a href="' . $results[$i] . '" target="_blank">' . $results[$i] . '</a>' . " ($service)\n<br>\n";
                             }
                         }
 
@@ -1298,7 +1309,7 @@ class App
                         if ($this->LOGGING) {
                             $date = date("Ymd\_His");
                             file_put_contents($this->PATH_LOGS . '/raw_result_' . $date . '.html', $results);
-                            $this->printout("\nWARNING: Unhandled error occurred! See '" . $this->PATH_LOGS . '/raw_result_' . $date . '.html' . "' for service reply.\n");
+                            $this->printout("\nWARNING: Unhandled error occurred! See '" . realpath($this->PATH_LOGS . '/raw_result_' . $date . '.html') . "' for service reply.\n");
                         } else {
                             $this->printout("\nWARNING: Unhandled error occurred! Turn on LOGGING to see more details!\n");
                         }
