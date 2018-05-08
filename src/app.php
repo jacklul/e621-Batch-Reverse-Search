@@ -30,7 +30,7 @@ class App
      *
      * @var string
      */
-    private $VERSION = '1.3.2';
+    private $VERSION = '1.3.3';
 
     /**
      * App update URL
