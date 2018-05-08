@@ -319,6 +319,8 @@ class App
      * Interrupt handler (CTRL-C)
      *  (Linux only)
      *
+     * @noinspection PhpUnusedParameterInspection
+     *
      * @param $signo
      */
     private function interruptHandler($signo = null)
@@ -370,6 +372,8 @@ class App
 
     /**
      * Continous reading of the result
+     *
+     * @noinspection PhpUnusedParameterInspection
      *
      * @param $resource
      * @param $string
