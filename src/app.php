@@ -945,7 +945,6 @@ class App
 
         if ($this->SAUCENAO_SEARCH_ALL) {
             $post_data['database'] = '999';
-
         } else {
             $post_data['database'] = '29';
         }
