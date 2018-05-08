@@ -995,7 +995,9 @@ class App
         if (isset($result['header']['status'])) {
             if ($result['header']['status'] === 0) {
                 foreach ($result['results'] as $this_result) {
-                    $matches[] = $this_result['data']['ext_urls'][0];
+                    if (isset($this_result['data']['ext_urls'])) {
+                        $matches[] = $this_result['data']['ext_urls'][0];
+                    }
                 }
 
                 return $matches;
