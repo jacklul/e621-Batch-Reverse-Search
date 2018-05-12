@@ -30,7 +30,7 @@ class App
      *
      * @var string
      */
-    private $VERSION = '1.3.3';
+    private $VERSION = '1.3.4';
 
     /**
      * App update URL
@@ -893,6 +893,10 @@ class App
             return ['error' => 'NoResults'];
         }
 
+        if (strpos($output, 'No matches returned') !== false) {
+            return ['error' => 'NoResults'];
+        }
+
         if (strpos($output, 'Not an image')) {
             return ['error' => 'NotImage'];
         }
@@ -1008,6 +1012,8 @@ class App
                 }
             }
         } elseif (strpos($output, 'You need an Image') !== false) {
+            return ['error' => 'NotImage'];
+        } elseif (strpos($output, 'Specified file does not seem to be an image') !== false) {
             return ['error' => 'NotImage'];
         } elseif (strpos($output, 'Low similarity results have been hidden.') !== false) {
             return ['error' => 'NoResults'];
