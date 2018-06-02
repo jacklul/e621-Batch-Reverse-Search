@@ -30,7 +30,7 @@ class App
      *
      * @var string
      */
-    private $VERSION = '1.3.4';
+    private $VERSION = '1.3.5';
 
     /**
      * App update URL
@@ -948,9 +948,9 @@ class App
         $post_data['numres'] = '10';
 
         if ($this->SAUCENAO_SEARCH_ALL) {
-            $post_data['database'] = '999';
+            $post_data['db'] = '999';
         } else {
-            $post_data['database'] = '29';
+            $post_data['db'] = '29';
         }
 
         if (!empty($this->SAUCENAO_API_KEY)) {
@@ -1164,7 +1164,7 @@ class App
                     }
 
                     if (isset($results[0]['id'])) {
-                        $results[0] = $results[0]['id'];
+                        $results[0] = 'https://e621.net/post/show/' . $results[0]['id'];
                     } else {
                         if ($this->MD5_SEARCH) {
                             if (is_array($results)) {
