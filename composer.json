@@ -6,7 +6,6 @@
     "ext-gd": "*",
     "ext-json": "*",
     "ext-openssl": "*",
-    "ext-pcntl": "*",
     "ext-readline": "*",
     "ext-zip": "*"
   },
