@@ -30,7 +30,7 @@ class App
      *
      * @var string
      */
-    private $VERSION = '1.3.5';
+    private $VERSION = '1.3.6';
 
     /**
      * App update URL
@@ -968,6 +968,7 @@ class App
         curl_setopt($ch, CURLOPT_URL, "http://saucenao.com/search.php");
         curl_setopt($ch, CURLOPT_USERAGENT, $this->USER_AGENT);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+		curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
         curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
         curl_setopt($ch, CURLOPT_TIMEOUT, $this->RETURN_TIMEOUT);
