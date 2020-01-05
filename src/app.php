@@ -1005,11 +1005,19 @@ class App
                 }
 
                 return $matches;
-            } else {
-                if ($result['header']['short_remaining'] === 0) {
+            }
+
+            if (isset($result['header']['message'])) {
+                if (strpos($result['header']['message'], 'Search Rate Too High') !== false) {
                     return ['error' => 'ShortLimitReached'];
-                } elseif ($result['header']['long_remaining'] === 0) {
+                }
+
+                if (strpos($result['header']['message'], 'Daily Search Limit Exceeded') !== false) {
                     return ['error' => 'LimitReached'];
+                }
+
+                if (strpos($result['header']['message'], 'Too many failed search attempts') !== false) {
+                    return ['error' => 'FailedLimitReached'];
                 }
             }
         } elseif (strpos($output, 'You need an Image') !== false) {
@@ -1074,10 +1082,12 @@ class App
         } elseif ($error == 'NotResource') {
             $this->printout(" conversion failed or image is corrupted!\n");
         } elseif ($error == 'ShortLimitReached') {
-            $this->printout(" burst limit reached, sleeping for 60 seconds!\n");
-            sleep(60);
+            $this->printout(" burst limit reached, sleeping for 30 seconds!\n");
+            sleep(30);
         } elseif ($error == 'LimitReached') {
             $this->printout(" exceeded daily search limit!\n");
+        } elseif ($error == 'FailedLimitReached') {
+            $this->printout(" too many failed search attempts!\n");
         } elseif (!empty($error)) {
             $this->printout(" error: " . $error . "\n");
         } else {
