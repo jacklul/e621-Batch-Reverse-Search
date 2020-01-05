@@ -364,7 +364,7 @@ class App
         }
 
         if ($total > 0) {
-            print(str_repeat(' ', 10) . "\r" . $this->LINE_BUFFER . ' ' . round(($progress * 100) / $total, 0)) . "%";
+            print(str_repeat(' ', strlen($this->LINE_BUFFER) + 10) . "\r" . $this->LINE_BUFFER . ' ' . round(($progress * 100) / $total, 0)) . "%     \r";
         }
 
         usleep(100);
@@ -854,7 +854,7 @@ class App
 
         $ch = curl_init();
 
-        curl_setopt($ch, CURLOPT_URL, "http://iqdb.harry.lu");
+        curl_setopt($ch, CURLOPT_URL, "https://iqdb.harry.lu");
         curl_setopt($ch, CURLOPT_USERAGENT, $this->USER_AGENT);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
@@ -965,10 +965,10 @@ class App
 
         $ch = curl_init();
 
-        curl_setopt($ch, CURLOPT_URL, "http://saucenao.com/search.php");
+        curl_setopt($ch, CURLOPT_URL, "https://saucenao.com/search.php");
         curl_setopt($ch, CURLOPT_USERAGENT, $this->USER_AGENT);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-		curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
         curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
         curl_setopt($ch, CURLOPT_TIMEOUT, $this->RETURN_TIMEOUT);
