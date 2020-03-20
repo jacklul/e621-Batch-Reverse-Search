@@ -2,17 +2,22 @@
 
 A script that iterates over a directory and performs a reverse search for every image using remote services.
 
-Currently supported services: [iqdb.harry.lu](http://iqdb.harry.lu/) and [saucenao.com](https://saucenao.com).
+Used services: 
+- [~~e621.net/iqdb_queries~~](https://e621.net/iqdb_queries) (disabled for now)
+- [saucenao.com](https://saucenao.com)
+
+Removed services: 
+- [~~iqdb.harry.lu~~](http://iqdb.harry.lu) - discontinued 
 
 ## Requirements:
 
-### Windows
+#### Windows
 
 Package comes with compiled **PHP 5.6 library** (x86 Non Thread Safe) and all required extensions
 
 You will need **Visual C++ 2012 Redistributable (x86)** for it to run - https://www.microsoft.com/en-us/download/details.aspx?id=30679
 
-### Linux
+#### Linux
 
 Install **PHP library** (>=5.6), cURL, GD and zip extensions - `sudo apt-get install php-cli php-curl php-gd php-zip`
 

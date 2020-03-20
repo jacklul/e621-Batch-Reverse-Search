@@ -30,7 +30,7 @@ class App
      *
      * @var string
      */
-    private $VERSION = '1.3.7';
+    private $VERSION = '1.4.0';
 
     /**
      * App update URL
@@ -133,7 +133,7 @@ class App
     private $USE_CONVERSION = true;
 
     /**
-     * Use 'saucenao.com' as additional service for reverse search
+     * Use additional services for reverse search
      *
      * @var bool
      */
@@ -447,15 +447,15 @@ class App
             }
 
             if (isset($config['OUTPUT_HTML_FILE'])) {
-                $this->OUTPUT_HTML_FILE = $config['OUTPUT_HTML_FILE'];
+                $this->OUTPUT_HTML_FILE = (bool)$config['OUTPUT_HTML_FILE'];
             }
 
             if (isset($config['MD5_SEARCH'])) {
-                $this->MD5_SEARCH = $config['MD5_SEARCH'];
+                $this->MD5_SEARCH = (bool)$config['MD5_SEARCH'];
             }
 
             if (isset($config['REVERSE_SEARCH'])) {
-                $this->REVERSE_SEARCH = $config['REVERSE_SEARCH'];
+                $this->REVERSE_SEARCH = (bool)$config['REVERSE_SEARCH'];
             }
 
             if (!$this->REVERSE_SEARCH && !$this->MD5_SEARCH) {
@@ -463,19 +463,19 @@ class App
             }
 
             if (isset($config['USE_PHPWFIO'])) {
-                $this->USE_PHPWFIO = $config['USE_PHPWFIO'];
+                $this->USE_PHPWFIO = (bool)$config['USE_PHPWFIO'];
             }
 
             if (isset($config['USE_CONVERSION'])) {
-                $this->USE_CONVERSION = $config['USE_CONVERSION'];
+                $this->USE_CONVERSION = (bool)$config['USE_CONVERSION'];
             }
 
             if (isset($config['USE_MULTI_SEARCH'])) {
-                $this->USE_MULTI_SEARCH = $config['USE_MULTI_SEARCH'];
+                $this->USE_MULTI_SEARCH = (bool)$config['USE_MULTI_SEARCH'];
             }
 
             if (isset($config['FORCE_MULTI_SEARCH'])) {
-                $this->FORCE_MULTI_SEARCH = $config['FORCE_MULTI_SEARCH'];
+                $this->FORCE_MULTI_SEARCH = (bool)$config['FORCE_MULTI_SEARCH'];
             }
 
             if (isset($config['SAUCENAO_API_KEY'])) {
@@ -483,7 +483,7 @@ class App
             }
 
             if (isset($config['SAUCENAO_SEARCH_ALL'])) {
-                $this->SAUCENAO_SEARCH_ALL = $config['SAUCENAO_SEARCH_ALL'];
+                $this->SAUCENAO_SEARCH_ALL = (bool)$config['SAUCENAO_SEARCH_ALL'];
             }
 
             if (isset($config['RETURN_TIMEOUT'])) {
@@ -550,7 +550,9 @@ class App
                 $ch = curl_init($this->UPDATE_URL);
                 curl_setopt($ch, CURLOPT_USERAGENT, $this->USER_AGENT);
                 curl_setopt($ch, CURLOPT_TIMEOUT, 10);
+                /** @noinspection CurlSslServerSpoofingInspection */
                 curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
+                /** @noinspection CurlSslServerSpoofingInspection */
                 curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 0);
                 curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 1);
                 curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
@@ -594,7 +596,9 @@ class App
                             $ch = curl_init($REMOTE_DOWNLOAD);
                             curl_setopt($ch, CURLOPT_USERAGENT, $this->USER_AGENT);
                             curl_setopt($ch, CURLOPT_TIMEOUT, 300);
+                            /** @noinspection CurlSslServerSpoofingInspection */
                             curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
+                            /** @noinspection CurlSslServerSpoofingInspection */
                             curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 0);
                             curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 1);
                             curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
@@ -673,24 +677,28 @@ class App
         $this->PATH_IMAGES = str_replace("//", "/", $this->PATH_IMAGES);
 
         if (!$this->CUSTOM_PATH && !is_dir($this->PATH_IMAGES)) {
+            /** @noinspection MkdirRaceConditionInspection */
             mkdir($this->PATH_IMAGES);
         }
 
         $this->PATH_IMAGES_FOUND = str_replace("//", "/", $this->PATH_IMAGES_FOUND);
 
         if (!is_dir($this->PATH_IMAGES_FOUND)) {
+            /** @noinspection MkdirRaceConditionInspection */
             mkdir($this->PATH_IMAGES_FOUND);
         }
 
         $this->PATH_IMAGES_NOT_FOUND = str_replace("//", "/", $this->PATH_IMAGES_NOT_FOUND);
 
         if (!is_dir($this->PATH_IMAGES_NOT_FOUND)) {
+            /** @noinspection MkdirRaceConditionInspection */
             mkdir($this->PATH_IMAGES_NOT_FOUND);
         }
 
         $this->PATH_LOGS = str_replace("//", "/", $this->PATH_LOGS);
 
         if ($this->LOGGING && !is_dir($this->PATH_LOGS)) {
+            /** @noinspection MkdirRaceConditionInspection */
             mkdir($this->PATH_LOGS);
         }
 
@@ -812,12 +820,104 @@ class App
     }
 
     /**
-     * Perform reverse search using iqdb.harry.lu
+     * Perform reverse search using e621's iqdb
      *
      * @param string $file
      * @return array|string|bool
      */
     private function reverseSearch($file)
+    {
+        return ['error' => 'Implementation not yet fully working'];
+
+        $post_data = [];
+
+        if ($this->USE_PHPWFIO || $this->USE_CONVERSION) {
+            $TEMP_FILE = tempnam(sys_get_temp_dir(), "Y69");
+
+            if ($this->USE_CONVERSION) {
+                $mime_type = mime_content_type($file);
+                $image = $this->readImage($file, $mime_type);
+
+                if (isset($image) && is_resource($image)) {
+                    imagejpeg($image, $TEMP_FILE, 90);
+                    imagedestroy($image);
+                } elseif (is_array($image) && isset($image['error'])) {
+                    return $image;
+                } else {
+                    return ['error' => 'NotResource'];
+                }
+            } elseif ($this->USE_PHPWFIO) {
+                copy($file, $TEMP_FILE);
+            }
+
+            $post_data['file'] = new \CurlFile($TEMP_FILE, mime_content_type($TEMP_FILE), basename($TEMP_FILE));
+        } else {
+            $post_data['file'] = new \CurlFile($file, mime_content_type($file), basename($file));
+        }
+
+        if (!empty($this->RETURN_BUFFER)) {
+            $this->RETURN_BUFFER = '';
+        }
+
+        $ch = curl_init();
+
+        curl_setopt($ch, CURLOPT_URL, "https://e621.net/iqdb_queries.json");
+        curl_setopt($ch, CURLOPT_USERAGENT, $this->USER_AGENT);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        /** @noinspection CurlSslServerSpoofingInspection */
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
+        curl_setopt($ch, CURLOPT_TIMEOUT, $this->RETURN_TIMEOUT);
+        curl_setopt($ch, CURLOPT_LOW_SPEED_TIME, $this->RETURN_TIMEOUT);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $post_data);
+        curl_setopt($ch, CURLOPT_NOPROGRESS, false);
+        curl_setopt($ch, CURLOPT_PROGRESSFUNCTION, [$this, 'cURLProgress']);
+        curl_setopt($ch, CURLOPT_WRITEFUNCTION, [$this, 'cURLRead']);
+
+        $output = curl_exec($ch);
+
+        if (isset($TEMP_FILE) && file_exists($TEMP_FILE)) {
+            unlink($TEMP_FILE);
+        }
+
+        if (!empty($this->RETURN_BUFFER)) {
+            $output = $this->RETURN_BUFFER;
+        }
+
+        if ($this->DEBUG) {
+            print "\nOUTPUT:\n" . $output . "\n";
+        }
+
+        $json_result = json_decode($output, true);
+
+        if (is_array($json_result) && count($json_result) > 0 && isset($json_result[0]['post_id'])) {
+            $search_results = [];
+            foreach ($json_result as $result) {
+                $search_results[] = 'https://e621.net/posts/' . $result['post_id'];
+            }
+
+            return $search_results;
+        }
+
+        if (empty($output)) {
+            return ['error' => 'EmptyResult'];
+        }
+
+        if (isset($json_result['message'])) {
+            return ['error' => $json_result['message']];
+        }
+
+        return $output;
+    }
+
+    /**
+     * Perform reverse search using iqdb.harry.lu
+     *
+     * @param string $file
+     * @return array|string|bool
+     */
+    private function reverseSearchHarryLu($file)
     {
         $post_data = [];
 
@@ -857,6 +957,7 @@ class App
         curl_setopt($ch, CURLOPT_URL, "https://iqdb.harry.lu");
         curl_setopt($ch, CURLOPT_USERAGENT, $this->USER_AGENT);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        /** @noinspection CurlSslServerSpoofingInspection */
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
         curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
         curl_setopt($ch, CURLOPT_TIMEOUT, $this->RETURN_TIMEOUT);
@@ -914,7 +1015,7 @@ class App
      * @param string $file
      * @return array|string|bool
      */
-    private function reverseSearchAlt($file)
+    private function reverseSearchSaucenao($file)
     {
         $post_data = [];
 
@@ -947,8 +1048,10 @@ class App
         $post_data['hide'] = '0';
         $post_data['numres'] = '10';
 
+        $db = '29';
         if ($this->SAUCENAO_SEARCH_ALL) {
             $post_data['db'] = '999';
+            $db = '999';
         } else {
             $post_data['db'] = '29';
         }
@@ -965,10 +1068,11 @@ class App
 
         $ch = curl_init();
 
-        curl_setopt($ch, CURLOPT_URL, "https://saucenao.com/search.php");
+        curl_setopt($ch, CURLOPT_URL, "https://saucenao.com/search.php?db=" . $db);
         curl_setopt($ch, CURLOPT_USERAGENT, $this->USER_AGENT);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+        /** @noinspection CurlSslServerSpoofingInspection */
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
         curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
         curl_setopt($ch, CURLOPT_TIMEOUT, $this->RETURN_TIMEOUT);
@@ -1042,9 +1146,10 @@ class App
     private function apiRequest($tags, $page = 1, $limit = 1)
     {
         $ch = curl_init();
-        curl_setopt($ch, CURLOPT_URL, 'https://e621.net/post/index.json?limit=' . $limit . '&page=' . $page . '&tags=' . $tags);
+        curl_setopt($ch, CURLOPT_URL, 'https://e621.net/posts.json?limit=' . $limit . '&page=' . $page . '&tags=' . $tags);
         curl_setopt($ch, CURLOPT_USERAGENT, $this->USER_AGENT);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        /** @noinspection CurlSslServerSpoofingInspection */
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
         curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
         curl_setopt($ch, CURLOPT_TIMEOUT, $this->RETURN_TIMEOUT);
@@ -1171,6 +1276,10 @@ class App
                         $raw = $this->apiRequest('md5:' . md5_file($this->PATH_IMAGES . '/' . $entry));
                         $results = json_decode($raw, true);
 
+                        if (isset($results['posts']) && count($results['posts']) > 0) {
+                            $results = $results['posts'];
+                        }
+
                         print("\r" . $this->LINE_BUFFER);
                     }
 
@@ -1190,10 +1299,10 @@ class App
                         }
 
                         if ($this->REVERSE_SEARCH) {
-                            $service = 'iqdb.harry.lu';
+                            $service = 'e621.net/iqdb_queries';
 
                             if ($this->USE_MULTI_SEARCH) {
-                                $this->LINE_BUFFER = " Trying reverse search #1 (iqdb.harry.lu)...";
+                                $this->LINE_BUFFER = " Trying reverse search #1 (e621.net/iqdb_queries)...";
                             } else {
                                 $this->LINE_BUFFER = " Trying reverse search...";
                             }
@@ -1204,37 +1313,74 @@ class App
 
                             print("\r" . $this->LINE_BUFFER);
 
-                            if ($this->USE_MULTI_SEARCH && (!is_array($results) || isset($results['error']) || $this->FORCE_MULTI_SEARCH)) {
-                                if ($this->FORCE_MULTI_SEARCH) {
-                                    $results_prev = null;
-                                    if (is_array($results) && count($results) > 0 && !isset($results['error'])) {
-                                        $results_prev = $results;
-                                        $this->printout(" success!\n");
+                            if ($this->USE_MULTI_SEARCH) {
+                                /*if (!is_array($results) || isset($results['error']) || $this->FORCE_MULTI_SEARCH) {
+                                    if ($this->FORCE_MULTI_SEARCH) {
+                                        $results_prev = null;
+                                        if (is_array($results) && count($results) > 0 && !isset($results['error'])) {
+                                            $results_prev = $results;
+                                            $this->printout(" success!\n");
+                                        }
+
+                                        $service_prev = $service;
                                     }
 
-                                    $service_prev = $service;
-                                }
+                                    $service = 'iqdb.harry.lu';
 
-                                $service = 'saucenao.com';
-
-                                if (isset($results['error']) || !is_array($results)) {
-                                    $this->parseError($results['error']);
-                                }
-
-                                $this->LINE_BUFFER = " Trying reverse search #2 (saucenao.com)...";
-                                $this->printout($this->LINE_BUFFER);
-
-                                $results = $this->reverseSearchAlt($this->PATH_IMAGES . '/' . $entry);
-
-                                if ($this->FORCE_MULTI_SEARCH) {
-                                    if (isset($results_prev) && isset($service_prev) && $results_prev !== null) {
-                                        $results = array_merge($results_prev, $results);
-                                        $results = array_unique($results);
-                                        $service = $service_prev . ', ' . $service;
+                                    if (isset($results['error']) || !is_array($results)) {
+                                        $this->parseError(is_array($results) ? $results['error'] : null);
                                     }
-                                }
 
-                                print("\r" . $this->LINE_BUFFER);
+                                    $this->LINE_BUFFER = " Trying reverse search #2 (iqdb.harry.lu)...";
+                                    $this->printout($this->LINE_BUFFER);
+
+                                    $results = $this->reverseSearchHarryLu($this->PATH_IMAGES . '/' . $entry);
+
+                                    if ($this->FORCE_MULTI_SEARCH) {
+                                        if (isset($results_prev) && isset($service_prev) && $results_prev !== null) {
+                                            /** @noinspection SlowArrayOperationsInLoopInspection *//*
+                                            $results = array_merge($results_prev, $results);
+                                            $results = array_unique($results);
+                                            $service = $service_prev . ', ' . $service;
+                                        }
+                                    }
+
+                                    print("\r" . $this->LINE_BUFFER);
+                                }*/
+
+                                if (!is_array($results) || isset($results['error']) || $this->FORCE_MULTI_SEARCH) {
+                                    if ($this->FORCE_MULTI_SEARCH) {
+                                        $results_prev = null;
+                                        if (is_array($results) && count($results) > 0 && !isset($results['error'])) {
+                                            $results_prev = $results;
+                                            $this->printout(" success!\n");
+                                        }
+
+                                        $service_prev = $service;
+                                    }
+
+                                    $service = 'saucenao.com';
+
+                                    if (isset($results['error']) || !is_array($results)) {
+                                        $this->parseError(is_array($results) ? $results['error'] : null);
+                                    }
+
+                                    $this->LINE_BUFFER = " Trying reverse search #2 (saucenao.com)...";
+                                    $this->printout($this->LINE_BUFFER);
+
+                                    $results = $this->reverseSearchSaucenao($this->PATH_IMAGES . '/' . $entry);
+
+                                    if ($this->FORCE_MULTI_SEARCH) {
+                                        if (isset($results_prev) && isset($service_prev) && $results_prev !== null) {
+                                            /** @noinspection SlowArrayOperationsInLoopInspection */
+                                            $results = array_merge($results_prev, $results);
+                                            $results = array_unique($results);
+                                            $service = $service_prev . ', ' . $service;
+                                        }
+                                    }
+
+                                    print("\r" . $this->LINE_BUFFER);
+                                }
                             }
                         }
                     }
@@ -1244,7 +1390,7 @@ class App
                     }
 
                     if (isset($results['error'])) {
-                        $this->parseError($results['error']);
+                        $this->parseError(is_array($results) ? $results['error'] : null);
 
                         if ($results['error'] == 'NoResults') {
                             $this->safeRename($this->PATH_IMAGES . '/' . $entry, $this->PATH_IMAGES_NOT_FOUND . '/' . $entry);
@@ -1255,7 +1401,7 @@ class App
                         $files_found++;
                         $html_output = '';
                         $results_text = '';
-                        for ($i = 0; $i < count($results); $i++) {
+                        for ($i = 0, $iMax = count($results); $i < $iMax; $i++) {
                             if (empty($results[$i])) {
                                 continue;
                             }

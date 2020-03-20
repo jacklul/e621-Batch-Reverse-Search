@@ -41,7 +41,7 @@
 ;  are big in size (3MB or more) and fail to upload
 ;USE_CONVERSION=true
 
-; Use 'saucenao.com' as additional service for reverse search (default: true)
+; Use additional services for reverse search (default: true)
 ;USE_MULTI_SEARCH=true
 
 ; Forces searching on all services even when links are already found (default: false)

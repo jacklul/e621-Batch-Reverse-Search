@@ -19,3 +19,4 @@ vendor/
 .Trashes
 .Spotlight-V100
 ._*
+.updatecheck
