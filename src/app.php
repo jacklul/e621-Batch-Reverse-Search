@@ -1099,13 +1099,21 @@ class App
 
         $result = json_decode($output, true);
 
+        if (empty($output)) {
+            return ['error' => 'EmptyResult'];
+        }
+
         $matches = [];
         if (isset($result['header']['status'])) {
             if ($result['header']['status'] === 0) {
                 foreach ($result['results'] as $this_result) {
-                    if (isset($this_result['data']['ext_urls'])) {
+                    if (isset($this_result['data']['ext_urls']) && (float)$this_result['header']['similarity'] >= 55) {
                         $matches[] = $this_result['data']['ext_urls'][0];
                     }
+                }
+
+                if (count($matches) === 0) {
+                    return ['error' => 'NoResults'];
                 }
 
                 return $matches;
