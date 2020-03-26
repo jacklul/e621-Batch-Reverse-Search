@@ -3,7 +3,7 @@
 A script that iterates over a directory and performs a reverse search for every image using remote services.
 
 Used services: 
-- [~~e621.net/iqdb_queries~~](https://e621.net/iqdb_queries) (disabled for now)
+- [e621.net/iqdb_queries](https://e621.net/iqdb_queries)
 - [saucenao.com](https://saucenao.com)
 
 Removed services: 
@@ -27,6 +27,11 @@ Install **PHP library** (>=5.6), cURL, GD and zip extensions - `sudo apt-get ins
 - Wait, this can take a very long time, depending on how many images you got there...
 - Matched images will be moved to 'found' folder, not matched images will be moved to 'not found' folder
 - List file 'links.html' (in 'found' folder) will be created containing all the links, open it with a web browser
+
+## Logging in (for e621 IQDB search):
+
+- Rename `config.cfg.example` to `config.cfg`
+- Fill your login details in `E621_LOGIN` and `E621_API_KEY` variables
 
 ## Advanced
 - You can pass any directory as an argument to the run script (on Windows you can move a directory over `run.bat`)
