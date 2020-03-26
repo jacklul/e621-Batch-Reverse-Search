@@ -1220,8 +1220,7 @@ class App
         } elseif ($error == 'NotResource') {
             $this->printout(" conversion failed or image is corrupted!\n");
         } elseif ($error == 'ShortLimitReached') {
-            $this->printout(" burst limit reached, sleeping for 30 seconds!\n");
-            sleep(30);
+            $this->printout(" burst limit reached!\n");
         } elseif ($error == 'LimitReached') {
             $this->printout(" exceeded daily search limit!\n");
         } elseif ($error == 'FailedLimitReached') {
@@ -1402,6 +1401,17 @@ class App
                                     $this->printout($this->LINE_BUFFER);
 
                                     $results = $this->reverseSearchSaucenao($this->PATH_IMAGES . '/' . $entry);
+
+                                    // Retry search after burst limit is reached
+                                    if (isset($results['error']) && $results['error'] === 'ShortLimitReached') {
+                                        $this->printout($this->LINE_BUFFER);
+                                        $this->parseError(is_array($results) ? $results['error'] : null);
+
+                                        $this->printout(' Waiting 30 seconds for limit to expire...');
+                                        sleep(30);
+
+                                        $results = $this->reverseSearchSaucenao($this->PATH_IMAGES . '/' . $entry);
+                                    }
 
                                     if ($this->FORCE_MULTI_SEARCH) {
                                         if (isset($results_prev) && isset($service_prev) && $results_prev !== null) {
