@@ -41,6 +41,14 @@
 ;  are big in size (3MB or more) and fail to upload
 ;USE_CONVERSION=true
 
+; Your e621 username
+; Required for the e621 IQDB to work properly
+E621_LOGIN=
+
+; Your e621 API KEY (Account -> Manage API Access)
+; Required for the e621 IQDB to work properly
+E621_API_KEY=
+
 ; Use additional services for reverse search (default: true)
 ;USE_MULTI_SEARCH=true
 

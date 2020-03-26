@@ -133,6 +133,20 @@ class App
     private $USE_CONVERSION = true;
 
     /**
+     * e621 username
+     *
+     * @var bool
+     */
+    private $E621_LOGIN = '';
+
+    /**
+     * e621 API KEY
+     *
+     * @var bool
+     */
+    private $E621_API_KEY = '';
+
+    /**
      * Use additional services for reverse search
      *
      * @var bool
@@ -468,6 +482,14 @@ class App
 
             if (isset($config['USE_CONVERSION'])) {
                 $this->USE_CONVERSION = (bool)$config['USE_CONVERSION'];
+            }
+
+            if (isset($config['E621_LOGIN'])) {
+                $this->E621_LOGIN = $config['E621_LOGIN'];
+            }
+
+            if (isset($config['E621_API_KEY'])) {
+                $this->E621_API_KEY = $config['E621_API_KEY'];
             }
 
             if (isset($config['USE_MULTI_SEARCH'])) {
@@ -827,7 +849,9 @@ class App
      */
     private function reverseSearch($file)
     {
-        return ['error' => 'Implementation not yet fully working'];
+        if (empty($this->E621_LOGIN) && empty($this->E621_API_KEY)) {
+            return ['error' => 'Authentication required, check configuration!'];
+        }
 
         $post_data = [];
 
@@ -874,6 +898,7 @@ class App
         curl_setopt($ch, CURLOPT_NOPROGRESS, false);
         curl_setopt($ch, CURLOPT_PROGRESSFUNCTION, [$this, 'cURLProgress']);
         curl_setopt($ch, CURLOPT_WRITEFUNCTION, [$this, 'cURLRead']);
+        curl_setopt($ch, CURLOPT_USERPWD,  $this->E621_LOGIN . ":" . $this->E621_API_KEY);
 
         $output = curl_exec($ch);
 
