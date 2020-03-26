@@ -15,7 +15,7 @@ if (!is_dir("build/images/")) {
 echo "Downloading test images using tags 'falvie order:favcount'..." . PHP_EOL;
 
 $ch = curl_init();
-curl_setopt($ch, CURLOPT_URL, "https://e621.net/post/index.json?tags=" . urlencode("falvie order:favcount") . "&limit=1&page=1");
+curl_setopt($ch, CURLOPT_URL, "https://e621.net/posts.json?tags=" . urlencode("falvie order:favcount") . "&limit=1");
 curl_setopt($ch, CURLOPT_USERAGENT, "e621 Batch Reverse Search - Test Script");
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
@@ -26,17 +26,17 @@ if (!empty($result)) {
     $result = json_decode($result, true);
 }
 
-if (is_array($result) && !empty($result[0]['file_url']) && !empty($result[0]['sample_url'])) {
-    $image_full = file_get_contents($result[0]['file_url']);
-    $image_small = file_get_contents($result[0]['sample_url']);
+if (is_array($result) && !empty($result['posts'][0]['file']['url']) && !empty($result['posts'][0]['preview']['url'])) {
+    $image_full = file_get_contents($result['posts'][0]['file']['url']);
+    $image_small = file_get_contents($result['posts'][0]['preview']['url']);
 
     if (!$image_full || !$image_small) {
         echo "Download failed!" . PHP_EOL;
         exit(1);
     }
 
-    file_put_contents('build/images/test-md5.' . pathinfo($result[0]['file_url'], PATHINFO_EXTENSION), $image_full);
-    file_put_contents('build/images/test-reverse_search.' . pathinfo($result[0]['sample_url'], PATHINFO_EXTENSION), $image_small);
+    file_put_contents('build/images/test-md5.' . pathinfo($result['posts'][0]['file']['url'], PATHINFO_EXTENSION), $image_full);
+    file_put_contents('build/images/test-reverse_search.' . pathinfo($result['posts'][0]['preview']['url'], PATHINFO_EXTENSION), $image_small);
 
     require_once("build/e621BRS.phar");
 } else {
