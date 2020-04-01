@@ -825,7 +825,7 @@ class App
 
                             if (isset($results['error']) && $results['error'] === 'ShortLimitReached') {
                                 $results = $this->applyCooldown(
-                                    1,
+                                    3,
                                     $results,
                                     function () use ($entry) {
                                         return $this->reverseSearch($this->PATH_IMAGES . '/' . $entry);
@@ -1038,10 +1038,11 @@ class App
      * @param string $tags
      * @param int    $page
      * @param int    $limit
+     * @param bool   $retry
      *
      * @return string|bool
      */
-    private function apiRequest($tags, $page = 1, $limit = 1)
+    private function apiRequest($tags, $page = 1, $limit = 1, $retry = true)
     {
         $ch = curl_init();
         curl_setopt($ch, CURLOPT_URL, 'https://e621.net/posts.json?limit=' . $limit . '&page=' . $page . '&tags=' . $tags);
@@ -1062,6 +1063,15 @@ class App
 
         if ($this->DEBUG) {
             $this->printout("\n" . $output . "\n");
+        }
+
+        if ($retry) {
+            $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            if ($http_code === 429) {
+                sleep(1);
+
+                return $this->apiRequest($tags, $page, $limit, false);
+            }
         }
 
         return $output;
