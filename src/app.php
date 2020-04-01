@@ -30,7 +30,7 @@ class App
      *
      * @var string
      */
-    private $VERSION = '1.5.1';
+    private $VERSION = '1.6.0';
 
     /**
      * App update URL
@@ -269,12 +269,12 @@ class App
         }
 
         if ($this->IS_LINUX && function_exists('pcntl_signal')) {
-            declare(ticks = 1);
+            declare(ticks=1);
             pcntl_signal(SIGINT, [$this, 'interruptHandler']);
         }
 
         $short_opts = "p::c::vu";
-        $long_opts  = ["path::", "config::", "version", "update"];
+        $long_opts = ["path::", "config::", "version", "update"];
 
         $options = getopt($short_opts, $long_opts);
 
@@ -312,209 +312,6 @@ class App
     }
 
     /**
-     * Log / Output function
-     *
-     * @param $text
-     */
-    private function printout($text)
-    {
-        print $text;
-
-        if ($this->LOGGING) {
-            if (empty($this->LOG_NAME)) {
-                $this->LOG_NAME = basename(__FILE__, '.php') . '_' . date("Ymd\_His");
-            }
-
-            file_put_contents($this->PATH_LOGS . '/' . $this->LOG_NAME . '.log', $text, FILE_APPEND);
-        }
-    }
-
-    /**
-     * Interrupt handler (CTRL-C)
-     *  (Linux only)
-     *
-     * @noinspection PhpUnusedParameterInspection
-     *
-     * @param $signo
-     */
-    private function interruptHandler($signo = null)
-    {
-        if ($this->IS_RUNNING) {
-            $this->IS_RUNNING = false;
-        } else {
-            print("\r\n\n");
-            exit;
-        }
-    }
-
-    /**
-     * cURL progress callback
-     *
-     * @param $resource
-     * @param $download_size
-     * @param $downloaded
-     * @param $upload_size
-     * @param $uploaded
-     */
-    private function cURLProgress($resource = null, $download_size = 0, $downloaded = 0, $upload_size = 0, $uploaded = 0)
-    {
-        $total = 0;
-        $progress = 0;
-
-        /* fallback for different cURL version which does not use $resource parameter */
-        if (is_numeric($resource)) {
-            $uploaded = $upload_size;
-            $upload_size = $downloaded;
-            $downloaded = $download_size;
-            $download_size = $resource;
-        }
-
-        if ($download_size > 0) {
-            $total = $download_size;
-            $progress = $downloaded;
-        } elseif ($upload_size > 0) {
-            $total = $upload_size;
-            $progress = $uploaded;
-        }
-
-        if ($total > 0) {
-            print(str_repeat(' ', strlen($this->LINE_BUFFER) + 10) . "\r" . $this->LINE_BUFFER . ' ' . round(($progress * 100) / $total, 0)) . "%     \r";
-        }
-
-        usleep(100);
-    }
-
-    /**
-     * Continous reading of the result
-     *
-     * @noinspection PhpUnusedParameterInspection
-     *
-     * @param $resource
-     * @param $string
-     *
-     * @return int
-     */
-    private function cURLRead($resource, $string)
-    {
-        $length = strlen($string);
-        $this->RETURN_BUFFER .= $string;
-
-        if (strpos($string, 'Improbable match') !== false || (strpos($string, 'Probable match:') !== false && strpos($string, 'Other results') !== false)) {
-            return 0;
-        }
-
-        return $length;
-    }
-
-    /**
-     * Set 'images' path
-     *
-     * @param string $path
-     */
-    private function setImagesPath($path)
-    {
-        if (!empty($path)) {
-            $this->CUSTOM_PATH = true;
-            $this->PATH_IMAGES = realpath($path);
-
-            if (!$this->PATH_IMAGES) {
-                die("Path is not valid: " . $path . "\n");
-            }
-
-            $this->PATH_IMAGES_FOUND = $this->PATH_IMAGES . '/found/';
-            $this->PATH_IMAGES_NOT_FOUND = $this->PATH_IMAGES . '/not found/';
-            $this->OUTPUT_HTML_FILE = $this->PATH_IMAGES_FOUND . '/links.html';
-        }
-    }
-
-    /**
-     * Load config file if it exists
-     *
-     * @param string $file
-     */
-    public function readConfig($file)
-    {
-        if (file_exists($file)) {
-            $config = parse_ini_file($file);
-
-            if (isset($config['DEBUG'])) {
-                $this->DEBUG = $config['DEBUG'];
-            }
-
-            if (isset($config['LOGGING'])) {
-                $this->LOGGING = $config['LOGGING'];
-            }
-
-            if (isset($config['PATH_LOGS'])) {
-                $this->PATH_LOGS = $config['PATH_LOGS'];
-            }
-
-            if (isset($config['PATH_IMAGES']) && !$this->CUSTOM_PATH) {
-                $this->PATH_IMAGES = $config['PATH_IMAGES'];
-                $this->PATH_IMAGES_FOUND = $this->PATH_IMAGES . '/found/';
-                $this->PATH_IMAGES_NOT_FOUND = $this->PATH_IMAGES . '/not found/';
-                $this->OUTPUT_HTML_FILE = $this->PATH_IMAGES_FOUND . '/links.html';
-            }
-
-            if (isset($config['OUTPUT_HTML'])) {
-                $this->OUTPUT_HTML = $config['OUTPUT_HTML'];
-            }
-
-            if (isset($config['OUTPUT_HTML_FILE'])) {
-                $this->OUTPUT_HTML_FILE = (bool)$config['OUTPUT_HTML_FILE'];
-            }
-
-            if (isset($config['MD5_SEARCH'])) {
-                $this->MD5_SEARCH = (bool)$config['MD5_SEARCH'];
-            }
-
-            if (isset($config['REVERSE_SEARCH'])) {
-                $this->REVERSE_SEARCH = (bool)$config['REVERSE_SEARCH'];
-            }
-
-            if (!$this->REVERSE_SEARCH && !$this->MD5_SEARCH) {
-                die("No search method set, check config!\n\n");
-            }
-
-            if (isset($config['USE_PHPWFIO'])) {
-                $this->USE_PHPWFIO = (bool)$config['USE_PHPWFIO'];
-            }
-
-            if (isset($config['USE_CONVERSION'])) {
-                $this->USE_CONVERSION = (bool)$config['USE_CONVERSION'];
-            }
-
-            if (isset($config['E621_LOGIN'])) {
-                $this->E621_LOGIN = $config['E621_LOGIN'];
-            }
-
-            if (isset($config['E621_API_KEY'])) {
-                $this->E621_API_KEY = $config['E621_API_KEY'];
-            }
-
-            if (isset($config['USE_MULTI_SEARCH'])) {
-                $this->USE_MULTI_SEARCH = (bool)$config['USE_MULTI_SEARCH'];
-            }
-
-            if (isset($config['FORCE_MULTI_SEARCH'])) {
-                $this->FORCE_MULTI_SEARCH = (bool)$config['FORCE_MULTI_SEARCH'];
-            }
-
-            if (isset($config['SAUCENAO_API_KEY'])) {
-                $this->SAUCENAO_API_KEY = $config['SAUCENAO_API_KEY'];
-            }
-
-            if (isset($config['SAUCENAO_SEARCH_ALL'])) {
-                $this->SAUCENAO_SEARCH_ALL = (bool)$config['SAUCENAO_SEARCH_ALL'];
-            }
-
-            if (isset($config['RETURN_TIMEOUT'])) {
-                $this->RETURN_TIMEOUT = $config['RETURN_TIMEOUT'];
-            }
-        }
-    }
-
-    /**
      * Just show version...
      */
     private function showVersion()
@@ -529,27 +326,6 @@ class App
     {
         $this->updater();
         die();
-    }
-
-    /**
-     * Just show ASCII splash...
-     */
-    private function showASCIISplash()
-    {
-        print '        __ ___  __   ____        _       _
-       / /|__ \/_ | |  _ \      | |     | |    v' . $this->VERSION . (($this->DEBUG) ?  " DEBUG MODE":'') . '
-  ___ / /_   ) || | | |_) | __ _| |_ ___| |__
- / _ \ \'_ \ / / | | |  _ < / _` | __/ __| \'_ \    Created by Jack\'lul
-|  __/ (_) / /_ | | | |_) | (_| | || (__| | | |       jacklul.github.io
- \___|\___/____||_| |____/ \__,_|\__\___|_| |_|
- _____                                 _____                     _
-|  __ \                               / ____|                   | |
-| |__) |_____   _____ _ __ ___  ___  | (___   ___  __ _ _ __ ___| |__
-|  _  // _ \ \ / / _ \ \'__/ __|/ _ \  \___ \ / _ \/ _` | \'__/ __| \'_ \
-| | \ \  __/\ | /  __/ |  \__ \  __/  ____) |  __/ (_| | | | (__| | | |
-|_|  \_\___| \_/ \___|_|  |___/\___| |_____/ \___|\__,_|_|  \___|_| |_|
-
-';
     }
 
     /**
@@ -692,6 +468,132 @@ class App
     }
 
     /**
+     * Log / Output function
+     *
+     * @param $text
+     */
+    private function printout($text)
+    {
+        print $text;
+
+        if ($this->LOGGING) {
+            if (empty($this->LOG_NAME)) {
+                $this->LOG_NAME = basename(__FILE__, '.php') . '_' . date("Ymd\_His");
+            }
+
+            file_put_contents($this->PATH_LOGS . '/' . $this->LOG_NAME . '.log', $text, FILE_APPEND);
+        }
+    }
+
+    /**
+     * Set 'images' path
+     *
+     * @param string $path
+     */
+    private function setImagesPath($path)
+    {
+        if (!empty($path)) {
+            $this->CUSTOM_PATH = true;
+            $this->PATH_IMAGES = realpath($path);
+
+            if (!$this->PATH_IMAGES) {
+                die("Path is not valid: " . $path . "\n");
+            }
+
+            $this->PATH_IMAGES_FOUND = $this->PATH_IMAGES . '/found/';
+            $this->PATH_IMAGES_NOT_FOUND = $this->PATH_IMAGES . '/not found/';
+            $this->OUTPUT_HTML_FILE = $this->PATH_IMAGES_FOUND . '/links.html';
+        }
+    }
+
+    /**
+     * Load config file if it exists
+     *
+     * @param string $file
+     */
+    public function readConfig($file)
+    {
+        if (file_exists($file)) {
+            $config = parse_ini_file($file);
+
+            if (isset($config['DEBUG'])) {
+                $this->DEBUG = $config['DEBUG'];
+            }
+
+            if (isset($config['LOGGING'])) {
+                $this->LOGGING = $config['LOGGING'];
+            }
+
+            if (isset($config['PATH_LOGS'])) {
+                $this->PATH_LOGS = $config['PATH_LOGS'];
+            }
+
+            if (isset($config['PATH_IMAGES']) && !$this->CUSTOM_PATH) {
+                $this->PATH_IMAGES = $config['PATH_IMAGES'];
+                $this->PATH_IMAGES_FOUND = $this->PATH_IMAGES . '/found/';
+                $this->PATH_IMAGES_NOT_FOUND = $this->PATH_IMAGES . '/not found/';
+                $this->OUTPUT_HTML_FILE = $this->PATH_IMAGES_FOUND . '/links.html';
+            }
+
+            if (isset($config['OUTPUT_HTML'])) {
+                $this->OUTPUT_HTML = $config['OUTPUT_HTML'];
+            }
+
+            if (isset($config['OUTPUT_HTML_FILE'])) {
+                $this->OUTPUT_HTML_FILE = (bool)$config['OUTPUT_HTML_FILE'];
+            }
+
+            if (isset($config['MD5_SEARCH'])) {
+                $this->MD5_SEARCH = (bool)$config['MD5_SEARCH'];
+            }
+
+            if (isset($config['REVERSE_SEARCH'])) {
+                $this->REVERSE_SEARCH = (bool)$config['REVERSE_SEARCH'];
+            }
+
+            if (!$this->REVERSE_SEARCH && !$this->MD5_SEARCH) {
+                die("No search method set, check config!\n\n");
+            }
+
+            if (isset($config['USE_PHPWFIO'])) {
+                $this->USE_PHPWFIO = (bool)$config['USE_PHPWFIO'];
+            }
+
+            if (isset($config['USE_CONVERSION'])) {
+                $this->USE_CONVERSION = (bool)$config['USE_CONVERSION'];
+            }
+
+            if (isset($config['E621_LOGIN'])) {
+                $this->E621_LOGIN = $config['E621_LOGIN'];
+            }
+
+            if (isset($config['E621_API_KEY'])) {
+                $this->E621_API_KEY = $config['E621_API_KEY'];
+            }
+
+            if (isset($config['USE_MULTI_SEARCH'])) {
+                $this->USE_MULTI_SEARCH = (bool)$config['USE_MULTI_SEARCH'];
+            }
+
+            if (isset($config['FORCE_MULTI_SEARCH'])) {
+                $this->FORCE_MULTI_SEARCH = (bool)$config['FORCE_MULTI_SEARCH'];
+            }
+
+            if (isset($config['SAUCENAO_API_KEY'])) {
+                $this->SAUCENAO_API_KEY = $config['SAUCENAO_API_KEY'];
+            }
+
+            if (isset($config['SAUCENAO_SEARCH_ALL'])) {
+                $this->SAUCENAO_SEARCH_ALL = (bool)$config['SAUCENAO_SEARCH_ALL'];
+            }
+
+            if (isset($config['RETURN_TIMEOUT'])) {
+                $this->RETURN_TIMEOUT = $config['RETURN_TIMEOUT'];
+            }
+        }
+    }
+
+    /**
      * Pre-main function
      */
     public function run()
@@ -790,446 +692,24 @@ class App
     }
 
     /**
-     * Prevent overwriting files
-     *
-     * @param string $from
-     * @param string $to
-     * @return bool
+     * Just show ASCII splash...
      */
-    private function safeRename($from, $to)
+    private function showASCIISplash()
     {
-        if (!file_exists($to)) {
-            return rename($from, $to);
-        }
-
-        $this->printout("\nWARNING: Couldn't move the file because it already exists in destination directory!\n");
-
-        return false;
-    }
-
-    /**
-     * Read the image and create image resource object
-     *
-     * @param $file
-     * @param $type
-     * @return array|null|resource
-     */
-    private function readImage($file, $type)
-    {
-        try {
-            if ($type == 'image/png') {
-                if ($this->IS_LINUX) {      // https://stackoverflow.com/q/45936271
-                    $output = `php -r "imagecreatefrompng('$file');" 2>&1`;
-
-                    if (!empty($output)) {
-                        return null;
-                    }
-                }
-
-                $image = imagecreatefrompng($file);
-            } elseif ($type == 'image/jpeg') {
-                $image = imagecreatefromjpeg($file);
-            } elseif ($type == 'image/gif') {
-                $image = imagecreatefromgif($file);
-            } else {
-                return null;
-            }
-        } catch (\Throwable $e) {
-            return ['error' => $e];
-        }
-
-        return $image;
-    }
-
-    /**
-     * Perform reverse search using e621's iqdb
-     *
-     * @param string $file
-     * @return array|string|bool
-     */
-    private function reverseSearch($file)
-    {
-        if (empty($this->E621_LOGIN) && empty($this->E621_API_KEY)) {
-            return ['error' => 'Authentication required, check configuration!'];
-        }
-
-        $post_data = [];
-
-        if ($this->USE_PHPWFIO || $this->USE_CONVERSION) {
-            $TEMP_FILE = tempnam(sys_get_temp_dir(), "Y69");
-
-            if ($this->USE_CONVERSION) {
-                $mime_type = mime_content_type($file);
-                $image = $this->readImage($file, $mime_type);
-
-                if (isset($image) && is_resource($image)) {
-                    imagejpeg($image, $TEMP_FILE, 90);
-                    imagedestroy($image);
-                } elseif (is_array($image) && isset($image['error'])) {
-                    return $image;
-                } else {
-                    return ['error' => 'NotResource'];
-                }
-            } elseif ($this->USE_PHPWFIO) {
-                copy($file, $TEMP_FILE);
-            }
-
-            $post_data['file'] = new \CurlFile($TEMP_FILE, mime_content_type($TEMP_FILE), basename($TEMP_FILE));
-        } else {
-            $post_data['file'] = new \CurlFile($file, mime_content_type($file), basename($file));
-        }
-
-        if (!empty($this->RETURN_BUFFER)) {
-            $this->RETURN_BUFFER = '';
-        }
-
-        $ch = curl_init();
-
-        curl_setopt($ch, CURLOPT_URL, "https://e621.net/iqdb_queries.json");
-        curl_setopt($ch, CURLOPT_USERAGENT, $this->USER_AGENT);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        /** @noinspection CurlSslServerSpoofingInspection */
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
-        curl_setopt($ch, CURLOPT_TIMEOUT, $this->RETURN_TIMEOUT);
-        curl_setopt($ch, CURLOPT_LOW_SPEED_TIME, $this->RETURN_TIMEOUT);
-        curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, $post_data);
-        curl_setopt($ch, CURLOPT_NOPROGRESS, false);
-        curl_setopt($ch, CURLOPT_PROGRESSFUNCTION, [$this, 'cURLProgress']);
-        curl_setopt($ch, CURLOPT_WRITEFUNCTION, [$this, 'cURLRead']);
-        curl_setopt($ch, CURLOPT_USERPWD,  $this->E621_LOGIN . ":" . $this->E621_API_KEY);
-
-        $output = curl_exec($ch);
-
-        if (isset($TEMP_FILE) && file_exists($TEMP_FILE)) {
-            unlink($TEMP_FILE);
-        }
-
-        if (!empty($this->RETURN_BUFFER)) {
-            $output = $this->RETURN_BUFFER;
-        }
-
-        if ($this->DEBUG) {
-            print "\nOUTPUT:\n" . $output . "\n";
-        }
-
-        $json_result = json_decode($output, true);
-
-        if (is_array($json_result) && count($json_result) > 0 && isset($json_result[0]['post_id'])) {
-            $search_results = [];
-            foreach ($json_result as $result) {
-                $search_results[] = 'https://e621.net/posts/' . $result['post_id'];
-            }
-
-            return $search_results;
-        }
-
-        if (empty($output)) {
-            return ['error' => 'EmptyResult'];
-        }
-
-        if (isset($json_result['message'])) {
-            return ['error' => $json_result['message']];
-        }
-
-        return $output;
-    }
-
-    /**
-     * Perform reverse search using iqdb.harry.lu
-     *
-     * @param string $file
-     * @return array|string|bool
-     */
-    private function reverseSearchHarryLu($file)
-    {
-        $post_data = [];
-
-        if ($this->USE_PHPWFIO || $this->USE_CONVERSION) {
-            $TEMP_FILE = tempnam(sys_get_temp_dir(), "Y69");
-
-            if ($this->USE_CONVERSION) {
-                $mime_type = mime_content_type($file);
-                $image = $this->readImage($file, $mime_type);
-
-                if (isset($image) && is_resource($image)) {
-                    imagejpeg($image, $TEMP_FILE, 90);
-                    imagedestroy($image);
-                } elseif (is_array($image) && isset($image['error'])) {
-                    return $image;
-                } else {
-                    return ['error' => 'NotResource'];
-                }
-            } elseif ($this->USE_PHPWFIO) {
-                copy($file, $TEMP_FILE);
-            }
-
-            $post_data['file'] = new \CurlFile($TEMP_FILE, mime_content_type($TEMP_FILE), basename($TEMP_FILE));
-        } else {
-            $post_data['file'] = new \CurlFile($file, mime_content_type($file), basename($file));
-        }
-
-        $post_data['service[]'] = '0';
-        $post_data['MAX_FILE_SIZE'] = '8388608';
-
-        if (!empty($this->RETURN_BUFFER)) {
-            $this->RETURN_BUFFER = '';
-        }
-
-        $ch = curl_init();
-
-        curl_setopt($ch, CURLOPT_URL, "https://iqdb.harry.lu");
-        curl_setopt($ch, CURLOPT_USERAGENT, $this->USER_AGENT);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        /** @noinspection CurlSslServerSpoofingInspection */
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
-        curl_setopt($ch, CURLOPT_TIMEOUT, $this->RETURN_TIMEOUT);
-        curl_setopt($ch, CURLOPT_LOW_SPEED_TIME, $this->RETURN_TIMEOUT);
-        curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, $post_data);
-        curl_setopt($ch, CURLOPT_NOPROGRESS, false);
-        curl_setopt($ch, CURLOPT_PROGRESSFUNCTION, [$this, 'cURLProgress']);
-        curl_setopt($ch, CURLOPT_WRITEFUNCTION, [$this, 'cURLRead']);
-
-        $output = curl_exec($ch);
-
-        if (isset($TEMP_FILE) && file_exists($TEMP_FILE)) {
-            unlink($TEMP_FILE);
-        }
-
-        if (!empty($this->RETURN_BUFFER)) {
-            $output = $this->RETURN_BUFFER;
-        }
-
-        if ($this->DEBUG) {
-            print "\nOUTPUT:\n" . $output . "\n";
-        }
-
-        if (preg_match_all("/Probable match.*?href='(.*?e621\.net.*?\/show\/\d+)/", $output, $matches)) {
-            return count($matches[1]) > 10 ? array_slice($matches[1], 0, 10) : $matches[1];
-        }
-
-        if (empty($output)) {
-            return ['error' => 'EmptyResult'];
-        }
-
-        if (strpos($output, 'We didn\'t find any results that were highly-relevant')) {
-            return ['error' => 'NoResults'];
-        }
-
-        if (strpos($output, 'No matches returned') !== false) {
-            return ['error' => 'NoResults'];
-        }
-
-        if (strpos($output, 'Not an image')) {
-            return ['error' => 'NotImage'];
-        }
-
-        if (strpos($output, 'Upload error')) {
-            return ['error' => 'UploadError'];
-        }
-
-        return $output;
-    }
-
-    /**
-     * Perform reverse search using saucenao.com
-     *
-     * @param string $file
-     * @return array|string|bool
-     */
-    private function reverseSearchSaucenao($file)
-    {
-        $post_data = [];
-
-        if ($this->USE_PHPWFIO || $this->USE_CONVERSION) {
-            $TEMP_FILE = tempnam(sys_get_temp_dir(), "Y69");
-
-            if ($this->USE_CONVERSION) {
-                $mime_type = mime_content_type($file);
-                $image = $this->readImage($file, $mime_type);
-
-                if (isset($image) && is_resource($image)) {
-                    imagejpeg($image, $TEMP_FILE, 90);
-                    imagedestroy($image);
-                } elseif (is_array($image) && isset($image['error'])) {
-                    return $image;
-                } else {
-                    return ['error' => 'NotResource'];
-                }
-            } elseif ($this->USE_PHPWFIO) {
-                copy($file, $TEMP_FILE);
-            }
-
-            $post_data['file'] = new \CurlFile($TEMP_FILE, mime_content_type($TEMP_FILE), basename($TEMP_FILE));
-        } else {
-            $post_data['file'] = new \CurlFile($file, mime_content_type($file), basename($file));
-        }
-
-        $post_data['url'] = '';
-        $post_data['frame'] = '1';
-        $post_data['hide'] = '0';
-        $post_data['numres'] = '10';
-
-        $db = '29';
-        if ($this->SAUCENAO_SEARCH_ALL) {
-            $post_data['db'] = '999';
-            $db = '999';
-        } else {
-            $post_data['db'] = '29';
-        }
-
-        if (!empty($this->SAUCENAO_API_KEY)) {
-            $post_data['api_key'] = $this->SAUCENAO_API_KEY;
-        }
-
-        $post_data['output_type'] = 2;
-
-        if (!empty($this->RETURN_BUFFER)) {
-            $this->RETURN_BUFFER = '';
-        }
-
-        $ch = curl_init();
-
-        curl_setopt($ch, CURLOPT_URL, "https://saucenao.com/search.php?db=" . $db);
-        curl_setopt($ch, CURLOPT_USERAGENT, $this->USER_AGENT);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-        /** @noinspection CurlSslServerSpoofingInspection */
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
-        curl_setopt($ch, CURLOPT_TIMEOUT, $this->RETURN_TIMEOUT);
-        curl_setopt($ch, CURLOPT_LOW_SPEED_TIME, $this->RETURN_TIMEOUT);
-        curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, $post_data);
-        curl_setopt($ch, CURLOPT_NOPROGRESS, false);
-        curl_setopt($ch, CURLOPT_PROGRESSFUNCTION, [$this, 'cURLProgress']);
-        curl_setopt($ch, CURLOPT_WRITEFUNCTION, [$this, 'cURLRead']);
-
-        $output = curl_exec($ch);
-
-        if (isset($TEMP_FILE) && file_exists($TEMP_FILE)) {
-            unlink($TEMP_FILE);
-        }
-
-        if (!empty($this->RETURN_BUFFER)) {
-            $output = $this->RETURN_BUFFER;
-        }
-
-        if ($this->DEBUG) {
-            print "\nOUTPUT:\n" . $output . "\n";
-        }
-
-        $result = json_decode($output, true);
-
-        if (empty($output)) {
-            return ['error' => 'EmptyResult'];
-        }
-
-        $matches = [];
-        if (isset($result['header']['status'])) {
-            if ($result['header']['status'] === 0) {
-                foreach ($result['results'] as $this_result) {
-                    if (isset($this_result['data']['ext_urls']) && (float)$this_result['header']['similarity'] >= 55) {
-                        $matches[] = $this_result['data']['ext_urls'][0];
-                    }
-                }
-
-                if (count($matches) === 0) {
-                    return ['error' => 'NoResults'];
-                }
-
-                return $matches;
-            }
-
-            if (isset($result['header']['message'])) {
-                if (strpos($result['header']['message'], 'Search Rate Too High') !== false) {
-                    return ['error' => 'ShortLimitReached'];
-                }
-
-                if (strpos($result['header']['message'], 'Daily Search Limit Exceeded') !== false) {
-                    return ['error' => 'LimitReached'];
-                }
-
-                if (strpos($result['header']['message'], 'Too many failed search attempts') !== false) {
-                    return ['error' => 'FailedLimitReached'];
-                }
-            }
-        } elseif (strpos($output, 'You need an Image') !== false) {
-            return ['error' => 'NotImage'];
-        } elseif (strpos($output, 'Specified file does not seem to be an image') !== false) {
-            return ['error' => 'NotImage'];
-        } elseif (strpos($output, 'Low similarity results have been hidden.') !== false) {
-            return ['error' => 'NoResults'];
-        }
-
-        return $output;
-    }
-
-    /**
-     * Make a query to e621 API
-     *
-     * @param string $tags
-     * @param int $page
-     * @param int $limit
-     * @return string|bool
-     */
-    private function apiRequest($tags, $page = 1, $limit = 1)
-    {
-        $ch = curl_init();
-        curl_setopt($ch, CURLOPT_URL, 'https://e621.net/posts.json?limit=' . $limit . '&page=' . $page . '&tags=' . $tags);
-        curl_setopt($ch, CURLOPT_USERAGENT, $this->USER_AGENT);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        /** @noinspection CurlSslServerSpoofingInspection */
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
-        curl_setopt($ch, CURLOPT_TIMEOUT, $this->RETURN_TIMEOUT);
-        curl_setopt($ch, CURLOPT_NOPROGRESS, false);
-        curl_setopt($ch, CURLOPT_PROGRESSFUNCTION, [$this, 'cURLProgress']);
-
-        $output = curl_exec($ch);
-
-        if ($this->DEBUG) {
-            print "\nOUTPUT:\n" . $output . "\n";
-        }
-
-        if ($this->DEBUG) {
-            $this->printout("\n" . $output . "\n");
-        }
-
-        return $output;
-    }
-
-    /**
-     * Parse error name
-     *
-     * @param $error
-     */
-    private function parseError($error)
-    {
-        if ($error == 'NoResults') {
-            $this->printout(" no matching images found!\n");
-        } elseif ($error == 'NotImage') {
-            $this->printout(" not a valid image!\n");
-        } elseif ($error == 'EmptyResult') {
-            $this->printout(" no reply from the server!\n");
-        } elseif ($error == 'UploadError') {
-            $this->printout(" upload error!\n");
-        } elseif ($error == 'NotResource') {
-            $this->printout(" conversion failed or image is corrupted!\n");
-        } elseif ($error == 'ShortLimitReached') {
-            $this->printout(" burst limit reached!\n");
-        } elseif ($error == 'LimitReached') {
-            $this->printout(" exceeded daily search limit!\n");
-        } elseif ($error == 'FailedLimitReached') {
-            $this->printout(" too many failed search attempts!\n");
-        } elseif (!empty($error)) {
-            $this->printout(" error: " . $error . "\n");
-        } else {
-            $this->printout(" empty response!\n");
-        }
+        print '        __ ___  __   ____        _       _
+       / /|__ \/_ | |  _ \      | |     | |    v' . $this->VERSION . (($this->DEBUG) ? " DEBUG MODE" : '') . '
+  ___ / /_   ) || | | |_) | __ _| |_ ___| |__
+ / _ \ \'_ \ / / | | |  _ < / _` | __/ __| \'_ \    Created by Jack\'lul
+|  __/ (_) / /_ | | | |_) | (_| | || (__| | | |       jacklul.github.io
+ \___|\___/____||_| |____/ \__,_|\__\___|_| |_|
+ _____                                 _____                     _
+|  __ \                               / ____|                   | |
+| |__) |_____   _____ _ __ ___  ___  | (___   ___  __ _ _ __ ___| |__
+|  _  // _ \ \ / / _ \ \'__/ __|/ _ \  \___ \ / _ \/ _` | \'__/ __| \'_ \
+| | \ \  __/\ | /  __/ |  \__ \  __/  ____) |  __/ (_| | | | (__| | | |
+|_|  \_\___| \_/ \___|_|  |___/\___| |_____/ \___|\__,_|_|  \___|_| |_|
+
+';
     }
 
     /**
@@ -1254,7 +734,7 @@ class App
 
                         if (urlencode($entry) != $entry && !$this->USE_PHPWFIO && !$this->IS_LINUX) {
                             $files_error['encoding'] = true;
-                        } elseif (!in_array(strtolower(pathinfo($entry, PATHINFO_EXTENSION)), array('jpg', 'jpeg', 'png', 'gif'))) {
+                        } elseif (!in_array(strtolower(pathinfo($entry, PATHINFO_EXTENSION)), ['jpg', 'jpeg', 'png', 'gif'])) {
                             $files_error['file_type'] = true;
                         } elseif (!$this->USE_CONVERSION && $file_size > 8388608) {
                             $files_error['file_size'] = true;
@@ -1296,7 +776,7 @@ class App
             foreach ($files as $entry) {
                 if ($this->IS_RUNNING) {
                     $files_count++;
-                    $this->printout('[' . ($files_count) . "/$files_total] Searching '" . (($this->USE_PHPWFIO) ? utf8_decode($entry):$entry) . "':\n");
+                    $this->printout('[' . ($files_count) . "/$files_total] Searching '" . (($this->USE_PHPWFIO) ? utf8_decode($entry) : $entry) . "':\n");
 
                     $results = null;
                     if ($this->MD5_SEARCH) {
@@ -1342,6 +822,16 @@ class App
                             $this->printout($this->LINE_BUFFER);
 
                             $results = $this->reverseSearch($this->PATH_IMAGES . '/' . $entry);
+
+                            if (isset($results['error']) && $results['error'] === 'ShortLimitReached') {
+                                $results = $this->applyCooldown(
+                                    1,
+                                    $results,
+                                    function () use ($entry) {
+                                        return $this->reverseSearchSaucenao($this->PATH_IMAGES . '/' . $entry);
+                                    }
+                                );
+                            }
 
                             print("\r" . $this->LINE_BUFFER);
 
@@ -1401,6 +891,16 @@ class App
                                     $this->printout($this->LINE_BUFFER);
 
                                     $results = $this->reverseSearchSaucenao($this->PATH_IMAGES . '/' . $entry);
+
+                                    if (isset($results['error']) && $results['error'] === 'ShortLimitReached') {
+                                        $results = $this->applyCooldown(
+                                            30,
+                                            $results,
+                                            function () use ($entry) {
+                                                return $this->reverseSearchSaucenao($this->PATH_IMAGES . '/' . $entry);
+                                            }
+                                        );
+                                    }
 
                                     // Retry search after burst limit is reached
                                     if (isset($results['error']) && $results['error'] === 'ShortLimitReached') {
@@ -1541,5 +1041,558 @@ class App
         } else {
             die("Path '" . $this->PATH_IMAGES . "' is invalid, check config!\n");
         }
+    }
+
+    /**
+     * Make a query to e621 API
+     *
+     * @param string $tags
+     * @param int    $page
+     * @param int    $limit
+     *
+     * @return string|bool
+     */
+    private function apiRequest($tags, $page = 1, $limit = 1)
+    {
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, 'https://e621.net/posts.json?limit=' . $limit . '&page=' . $page . '&tags=' . $tags);
+        curl_setopt($ch, CURLOPT_USERAGENT, $this->USER_AGENT);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        /** @noinspection CurlSslServerSpoofingInspection */
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
+        curl_setopt($ch, CURLOPT_TIMEOUT, $this->RETURN_TIMEOUT);
+        curl_setopt($ch, CURLOPT_NOPROGRESS, false);
+        curl_setopt($ch, CURLOPT_PROGRESSFUNCTION, [$this, 'cURLProgress']);
+
+        $output = curl_exec($ch);
+
+        if ($this->DEBUG) {
+            print "\nOUTPUT:\n" . $output . "\n";
+        }
+
+        if ($this->DEBUG) {
+            $this->printout("\n" . $output . "\n");
+        }
+
+        return $output;
+    }
+
+    /**
+     * Prevent overwriting files
+     *
+     * @param string $from
+     * @param string $to
+     *
+     * @return bool
+     */
+    private function safeRename($from, $to)
+    {
+        if (!file_exists($to)) {
+            return rename($from, $to);
+        }
+
+        $this->printout("\nWARNING: Couldn't move the file because it already exists in destination directory!\n");
+
+        return false;
+    }
+
+    /**
+     * Perform reverse search using e621's iqdb
+     *
+     * @param string $file
+     *
+     * @return array|string|bool
+     */
+    private function reverseSearch($file)
+    {
+        if (empty($this->E621_LOGIN) && empty($this->E621_API_KEY)) {
+            return ['error' => 'Authentication required, check configuration!'];
+        }
+
+        $post_data = [];
+
+        if ($this->USE_PHPWFIO || $this->USE_CONVERSION) {
+            $TEMP_FILE = tempnam(sys_get_temp_dir(), "Y69");
+
+            if ($this->USE_CONVERSION) {
+                $mime_type = mime_content_type($file);
+                $image = $this->readImage($file, $mime_type);
+
+                if (isset($image) && is_resource($image)) {
+                    imagejpeg($image, $TEMP_FILE, 90);
+                    imagedestroy($image);
+                } elseif (is_array($image) && isset($image['error'])) {
+                    return $image;
+                } else {
+                    return ['error' => 'NotResource'];
+                }
+            } elseif ($this->USE_PHPWFIO) {
+                copy($file, $TEMP_FILE);
+            }
+
+            $post_data['file'] = new \CurlFile($TEMP_FILE, mime_content_type($TEMP_FILE), basename($TEMP_FILE));
+        } else {
+            $post_data['file'] = new \CurlFile($file, mime_content_type($file), basename($file));
+        }
+
+        if (!empty($this->RETURN_BUFFER)) {
+            $this->RETURN_BUFFER = '';
+        }
+
+        $ch = curl_init();
+
+        curl_setopt($ch, CURLOPT_URL, "https://e621.net/iqdb_queries.json");
+        curl_setopt($ch, CURLOPT_USERAGENT, $this->USER_AGENT);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        /** @noinspection CurlSslServerSpoofingInspection */
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
+        curl_setopt($ch, CURLOPT_TIMEOUT, $this->RETURN_TIMEOUT);
+        curl_setopt($ch, CURLOPT_LOW_SPEED_TIME, $this->RETURN_TIMEOUT);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $post_data);
+        curl_setopt($ch, CURLOPT_NOPROGRESS, false);
+        curl_setopt($ch, CURLOPT_PROGRESSFUNCTION, [$this, 'cURLProgress']);
+        curl_setopt($ch, CURLOPT_WRITEFUNCTION, [$this, 'cURLRead']);
+        curl_setopt($ch, CURLOPT_USERPWD, $this->E621_LOGIN . ":" . $this->E621_API_KEY);
+
+        $output = curl_exec($ch);
+
+        if (isset($TEMP_FILE) && file_exists($TEMP_FILE)) {
+            unlink($TEMP_FILE);
+        }
+
+        if (!empty($this->RETURN_BUFFER)) {
+            $output = $this->RETURN_BUFFER;
+        }
+
+        $http_status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        if ($this->DEBUG && $http_status !== 200) {
+            print "\nStatus Code: " . $http_status . "\n";
+        }
+
+        if ($this->DEBUG) {
+            print "\nOUTPUT:\n" . $output . "\n";
+        }
+
+        $json_result = json_decode($output, true);
+
+        if (is_array($json_result) && count($json_result) > 0 && isset($json_result[0]['post_id'])) {
+            $search_results = [];
+            foreach ($json_result as $result) {
+                $search_results[] = 'https://e621.net/posts/' . $result['post_id'];
+            }
+
+            return $search_results;
+        }
+
+        if ($http_status === 429) {
+            return ['error' => 'ShortLimitReached'];
+        }
+
+        if (empty($output)) {
+            return ['error' => 'EmptyResult'];
+        }
+
+        if (isset($json_result['message'])) {
+            return ['error' => $json_result['message']];
+        }
+
+        return $output;
+    }
+
+    /**
+     * Read the image and create image resource object
+     *
+     * @param $file
+     * @param $type
+     *
+     * @return array|null|resource
+     */
+    private function readImage($file, $type)
+    {
+        try {
+            if ($type == 'image/png') {
+                if ($this->IS_LINUX) {      // https://stackoverflow.com/q/45936271
+                    $output = `php -r "imagecreatefrompng('$file');" 2>&1`;
+
+                    if (!empty($output)) {
+                        return null;
+                    }
+                }
+
+                $image = imagecreatefrompng($file);
+            } elseif ($type == 'image/jpeg') {
+                $image = imagecreatefromjpeg($file);
+            } elseif ($type == 'image/gif') {
+                $image = imagecreatefromgif($file);
+            } else {
+                return null;
+            }
+        } catch (\Throwable $e) {
+            return ['error' => $e];
+        }
+
+        return $image;
+    }
+
+    /**
+     * @param int      $delay
+     * @param array    $results
+     * @param callable $callable
+     *
+     * @return callable
+     */
+    private function applyCooldown($delay = 60, array $results, callable $callable)
+    {
+        $this->printout($this->LINE_BUFFER);
+        $this->parseError(is_array($results) ? $results['error'] : null);
+
+        $this->printout(' Waiting ' . $delay . ' seconds for limit to expire...');
+        sleep($delay);
+
+        return $callable();
+    }
+
+    /**
+     * Parse error name
+     *
+     * @param $error
+     */
+    private function parseError($error)
+    {
+        if ($error == 'NoResults') {
+            $this->printout(" no matching images found!\n");
+        } elseif ($error == 'NotImage') {
+            $this->printout(" not a valid image!\n");
+        } elseif ($error == 'EmptyResult') {
+            $this->printout(" no reply from the server!\n");
+        } elseif ($error == 'UploadError') {
+            $this->printout(" upload error!\n");
+        } elseif ($error == 'NotResource') {
+            $this->printout(" conversion failed or image is corrupted!\n");
+        } elseif ($error == 'ShortLimitReached') {
+            $this->printout(" too many requests!\n");
+        } elseif ($error == 'LimitReached') {
+            $this->printout(" exceeded daily search limit!\n");
+        } elseif ($error == 'FailedLimitReached') {
+            $this->printout(" too many failed search attempts!\n");
+        } elseif (!empty($error)) {
+            $this->printout(" error: " . $error . "\n");
+        } else {
+            $this->printout(" empty response!\n");
+        }
+    }
+
+    /**
+     * Perform reverse search using saucenao.com
+     *
+     * @param string $file
+     *
+     * @return array|string|bool
+     */
+    private function reverseSearchSaucenao($file)
+    {
+        $post_data = [];
+
+        if ($this->USE_PHPWFIO || $this->USE_CONVERSION) {
+            $TEMP_FILE = tempnam(sys_get_temp_dir(), "Y69");
+
+            if ($this->USE_CONVERSION) {
+                $mime_type = mime_content_type($file);
+                $image = $this->readImage($file, $mime_type);
+
+                if (isset($image) && is_resource($image)) {
+                    imagejpeg($image, $TEMP_FILE, 90);
+                    imagedestroy($image);
+                } elseif (is_array($image) && isset($image['error'])) {
+                    return $image;
+                } else {
+                    return ['error' => 'NotResource'];
+                }
+            } elseif ($this->USE_PHPWFIO) {
+                copy($file, $TEMP_FILE);
+            }
+
+            $post_data['file'] = new \CurlFile($TEMP_FILE, mime_content_type($TEMP_FILE), basename($TEMP_FILE));
+        } else {
+            $post_data['file'] = new \CurlFile($file, mime_content_type($file), basename($file));
+        }
+
+        $post_data['url'] = '';
+        $post_data['frame'] = '1';
+        $post_data['hide'] = '0';
+        $post_data['numres'] = '10';
+
+        $db = '29';
+        if ($this->SAUCENAO_SEARCH_ALL) {
+            $post_data['db'] = '999';
+            $db = '999';
+        } else {
+            $post_data['db'] = '29';
+        }
+
+        if (!empty($this->SAUCENAO_API_KEY)) {
+            $post_data['api_key'] = $this->SAUCENAO_API_KEY;
+        }
+
+        $post_data['output_type'] = 2;
+
+        if (!empty($this->RETURN_BUFFER)) {
+            $this->RETURN_BUFFER = '';
+        }
+
+        $ch = curl_init();
+
+        curl_setopt($ch, CURLOPT_URL, "https://saucenao.com/search.php?db=" . $db);
+        curl_setopt($ch, CURLOPT_USERAGENT, $this->USER_AGENT);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+        /** @noinspection CurlSslServerSpoofingInspection */
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
+        curl_setopt($ch, CURLOPT_TIMEOUT, $this->RETURN_TIMEOUT);
+        curl_setopt($ch, CURLOPT_LOW_SPEED_TIME, $this->RETURN_TIMEOUT);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $post_data);
+        curl_setopt($ch, CURLOPT_NOPROGRESS, false);
+        curl_setopt($ch, CURLOPT_PROGRESSFUNCTION, [$this, 'cURLProgress']);
+        curl_setopt($ch, CURLOPT_WRITEFUNCTION, [$this, 'cURLRead']);
+
+        $output = curl_exec($ch);
+
+        if (isset($TEMP_FILE) && file_exists($TEMP_FILE)) {
+            unlink($TEMP_FILE);
+        }
+
+        if (!empty($this->RETURN_BUFFER)) {
+            $output = $this->RETURN_BUFFER;
+        }
+
+        if ($this->DEBUG) {
+            print "\nOUTPUT:\n" . $output . "\n";
+        }
+
+        $result = json_decode($output, true);
+
+        if (empty($output)) {
+            return ['error' => 'EmptyResult'];
+        }
+
+        $matches = [];
+        if (isset($result['header']['status'])) {
+            if ($result['header']['status'] === 0) {
+                foreach ($result['results'] as $this_result) {
+                    if (isset($this_result['data']['ext_urls']) && (float)$this_result['header']['similarity'] >= 55) {
+                        $matches[] = $this_result['data']['ext_urls'][0];
+                    }
+                }
+
+                if (count($matches) === 0) {
+                    return ['error' => 'NoResults'];
+                }
+
+                return $matches;
+            }
+
+            if (isset($result['header']['message'])) {
+                if (strpos($result['header']['message'], 'Search Rate Too High') !== false) {
+                    return ['error' => 'ShortLimitReached'];
+                }
+
+                if (strpos($result['header']['message'], 'Daily Search Limit Exceeded') !== false) {
+                    return ['error' => 'LimitReached'];
+                }
+
+                if (strpos($result['header']['message'], 'Too many failed search attempts') !== false) {
+                    return ['error' => 'FailedLimitReached'];
+                }
+            }
+        } elseif (strpos($output, 'You need an Image') !== false) {
+            return ['error' => 'NotImage'];
+        } elseif (strpos($output, 'Specified file does not seem to be an image') !== false) {
+            return ['error' => 'NotImage'];
+        } elseif (strpos($output, 'Low similarity results have been hidden.') !== false) {
+            return ['error' => 'NoResults'];
+        }
+
+        return $output;
+    }
+
+    /**
+     * Interrupt handler (CTRL-C)
+     *  (Linux only)
+     *
+     * @noinspection PhpUnusedParameterInspection
+     *
+     * @param $signo
+     */
+    private function interruptHandler($signo = null)
+    {
+        if ($this->IS_RUNNING) {
+            $this->IS_RUNNING = false;
+        } else {
+            print("\r\n\n");
+            exit;
+        }
+    }
+
+    /**
+     * cURL progress callback
+     *
+     * @param $resource
+     * @param $download_size
+     * @param $downloaded
+     * @param $upload_size
+     * @param $uploaded
+     */
+    private function cURLProgress($resource = null, $download_size = 0, $downloaded = 0, $upload_size = 0, $uploaded = 0)
+    {
+        $total = 0;
+        $progress = 0;
+
+        /* fallback for different cURL version which does not use $resource parameter */
+        if (is_numeric($resource)) {
+            $uploaded = $upload_size;
+            $upload_size = $downloaded;
+            $downloaded = $download_size;
+            $download_size = $resource;
+        }
+
+        if ($download_size > 0) {
+            $total = $download_size;
+            $progress = $downloaded;
+        } elseif ($upload_size > 0) {
+            $total = $upload_size;
+            $progress = $uploaded;
+        }
+
+        if ($total > 0) {
+            print(str_repeat(' ', strlen($this->LINE_BUFFER) + 10) . "\r" . $this->LINE_BUFFER . ' ' . round(($progress * 100) / $total, 0)) . "%     \r";
+        }
+
+        usleep(100);
+    }
+
+    /**
+     * Continous reading of the result
+     *
+     * @noinspection PhpUnusedParameterInspection
+     *
+     * @param $resource
+     * @param $string
+     *
+     * @return int
+     */
+    private function cURLRead($resource, $string)
+    {
+        $length = strlen($string);
+        $this->RETURN_BUFFER .= $string;
+
+        if (strpos($string, 'Improbable match') !== false || (strpos($string, 'Probable match:') !== false && strpos($string, 'Other results') !== false)) {
+            return 0;
+        }
+
+        return $length;
+    }
+
+    /**
+     * Perform reverse search using iqdb.harry.lu
+     *
+     * @param string $file
+     *
+     * @return array|string|bool
+     */
+    private function reverseSearchHarryLu($file)
+    {
+        $post_data = [];
+
+        if ($this->USE_PHPWFIO || $this->USE_CONVERSION) {
+            $TEMP_FILE = tempnam(sys_get_temp_dir(), "Y69");
+
+            if ($this->USE_CONVERSION) {
+                $mime_type = mime_content_type($file);
+                $image = $this->readImage($file, $mime_type);
+
+                if (isset($image) && is_resource($image)) {
+                    imagejpeg($image, $TEMP_FILE, 90);
+                    imagedestroy($image);
+                } elseif (is_array($image) && isset($image['error'])) {
+                    return $image;
+                } else {
+                    return ['error' => 'NotResource'];
+                }
+            } elseif ($this->USE_PHPWFIO) {
+                copy($file, $TEMP_FILE);
+            }
+
+            $post_data['file'] = new \CurlFile($TEMP_FILE, mime_content_type($TEMP_FILE), basename($TEMP_FILE));
+        } else {
+            $post_data['file'] = new \CurlFile($file, mime_content_type($file), basename($file));
+        }
+
+        $post_data['service[]'] = '0';
+        $post_data['MAX_FILE_SIZE'] = '8388608';
+
+        if (!empty($this->RETURN_BUFFER)) {
+            $this->RETURN_BUFFER = '';
+        }
+
+        $ch = curl_init();
+
+        curl_setopt($ch, CURLOPT_URL, "https://iqdb.harry.lu");
+        curl_setopt($ch, CURLOPT_USERAGENT, $this->USER_AGENT);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        /** @noinspection CurlSslServerSpoofingInspection */
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
+        curl_setopt($ch, CURLOPT_TIMEOUT, $this->RETURN_TIMEOUT);
+        curl_setopt($ch, CURLOPT_LOW_SPEED_TIME, $this->RETURN_TIMEOUT);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $post_data);
+        curl_setopt($ch, CURLOPT_NOPROGRESS, false);
+        curl_setopt($ch, CURLOPT_PROGRESSFUNCTION, [$this, 'cURLProgress']);
+        curl_setopt($ch, CURLOPT_WRITEFUNCTION, [$this, 'cURLRead']);
+
+        $output = curl_exec($ch);
+
+        if (isset($TEMP_FILE) && file_exists($TEMP_FILE)) {
+            unlink($TEMP_FILE);
+        }
+
+        if (!empty($this->RETURN_BUFFER)) {
+            $output = $this->RETURN_BUFFER;
+        }
+
+        if ($this->DEBUG) {
+            print "\nOUTPUT:\n" . $output . "\n";
+        }
+
+        if (preg_match_all("/Probable match.*?href='(.*?e621\.net.*?\/show\/\d+)/", $output, $matches)) {
+            return count($matches[1]) > 10 ? array_slice($matches[1], 0, 10) : $matches[1];
+        }
+
+        if (empty($output)) {
+            return ['error' => 'EmptyResult'];
+        }
+
+        if (strpos($output, 'We didn\'t find any results that were highly-relevant')) {
+            return ['error' => 'NoResults'];
+        }
+
+        if (strpos($output, 'No matches returned') !== false) {
+            return ['error' => 'NoResults'];
+        }
+
+        if (strpos($output, 'Not an image')) {
+            return ['error' => 'NotImage'];
+        }
+
+        if (strpos($output, 'Upload error')) {
+            return ['error' => 'UploadError'];
+        }
+
+        return $output;
     }
 }
