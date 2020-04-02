@@ -30,7 +30,7 @@ class App
      *
      * @var string
      */
-    private $VERSION = '1.6.0';
+    private $VERSION = '1.6.1';
 
     /**
      * App update URL
@@ -825,7 +825,7 @@ class App
 
                             if (isset($results['error']) && $results['error'] === 'ShortLimitReached') {
                                 $results = $this->applyCooldown(
-                                    3,
+                                    1,
                                     $results,
                                     function () use ($entry) {
                                         return $this->reverseSearch($this->PATH_IMAGES . '/' . $entry);
@@ -927,7 +927,7 @@ class App
                         if ($results['error'] == 'NoResults') {
                             $this->safeRename($this->PATH_IMAGES . '/' . $entry, $this->PATH_IMAGES_NOT_FOUND . '/' . $entry);
                         }
-                    } elseif (is_array($results) && count($results) > 0) {
+                    } elseif (is_array($results) && count($results) > 0 && !isset($results['posts'])) {
                         $this->printout(" success!\n");
 
                         $files_found++;
@@ -1061,16 +1061,16 @@ class App
             print "\nOUTPUT:\n" . $output . "\n";
         }
 
-        if ($this->DEBUG) {
-            $this->printout("\n" . $output . "\n");
-        }
-
         if ($retry) {
             $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
             if ($http_code === 429) {
-                sleep(1);
-
-                return $this->apiRequest($tags, $page, $limit, false);
+                return $this->applyCooldown(
+                    1,
+                    ['error' => 'ShortLimitReached'],
+                    function () use ($tags, $page, $limit) {
+                        return $this->apiRequest($tags, $page, $limit, false);
+                    }
+                );
             }
         }
 
@@ -1177,13 +1177,23 @@ class App
 
         $json_result = json_decode($output, true);
 
-        if (is_array($json_result) && count($json_result) > 0 && isset($json_result[0]['post_id'])) {
-            $search_results = [];
-            foreach ($json_result as $result) {
-                $search_results[] = 'https://e621.net/posts/' . $result['post_id'];
+        if (is_array($json_result)) {
+            if (isset($json_result['posts'])) {
+                $json_result = $json_result['posts'];
             }
 
-            return $search_results;
+            if (count($json_result) === 0) {
+                return ['error' => 'NoResults'];
+            }
+
+            if (count($json_result) > 0 && isset($json_result[0]['post_id'])) {
+                $search_results = [];
+                foreach ($json_result as $result) {
+                    $search_results[] = 'https://e621.net/posts/' . $result['post_id'];
+                }
+
+                return $search_results;
+            }
         }
 
         if ($http_status === 429) {
@@ -1245,7 +1255,7 @@ class App
      */
     private function applyCooldown($delay = 60, array $results, callable $callable)
     {
-        $this->printout($this->LINE_BUFFER);
+        $this->printout("\r" . $this->LINE_BUFFER);
         $this->parseError(is_array($results) ? $results['error'] : null);
 
         $this->printout(' Waiting ' . $delay . ' seconds for limit to expire...');
@@ -1468,7 +1478,7 @@ class App
         }
 
         if ($total > 0) {
-            print(str_repeat(' ', strlen($this->LINE_BUFFER) + 10) . "\r" . $this->LINE_BUFFER . ' ' . round(($progress * 100) / $total, 0)) . "%     \r";
+            print(str_repeat(' ', strlen($this->LINE_BUFFER) + 25) . "\r" . $this->LINE_BUFFER . ' ' . round(($progress * 100) / $total, 0)) . "%     \r";
         }
 
         usleep(100);
