@@ -30,7 +30,7 @@ class App
      *
      * @var string
      */
-    private $VERSION = '1.6.1';
+    private $VERSION = '1.6.2';
 
     /**
      * App update URL
@@ -1079,6 +1079,54 @@ class App
     }
 
     /**
+     * @param int      $delay
+     * @param array    $results
+     * @param callable $callable
+     *
+     * @return callable
+     */
+    private function applyCooldown($delay = 60, array $results, callable $callable)
+    {
+        $this->printout($this->LINE_BUFFER);
+        $this->parseError(is_array($results) ? $results['error'] : null);
+
+        $this->printout(' Waiting ' . $delay . ' seconds...');
+        sleep($delay);
+
+        return $callable();
+    }
+
+    /**
+     * Parse error name
+     *
+     * @param $error
+     */
+    private function parseError($error)
+    {
+        if ($error == 'NoResults') {
+            $this->printout(" no matching images found!\n");
+        } elseif ($error == 'NotImage') {
+            $this->printout(" not a valid image!\n");
+        } elseif ($error == 'EmptyResult') {
+            $this->printout(" no reply from the server!\n");
+        } elseif ($error == 'UploadError') {
+            $this->printout(" upload error!\n");
+        } elseif ($error == 'NotResource') {
+            $this->printout(" conversion failed or image is corrupted!\n");
+        } elseif ($error == 'ShortLimitReached') {
+            $this->printout(" too many requests!\n");
+        } elseif ($error == 'LimitReached') {
+            $this->printout(" exceeded daily search limit!\n");
+        } elseif ($error == 'FailedLimitReached') {
+            $this->printout(" too many failed search attempts!\n");
+        } elseif (!empty($error)) {
+            $this->printout(" error: " . $error . "\n");
+        } else {
+            $this->printout(" empty response!\n");
+        }
+    }
+
+    /**
      * Prevent overwriting files
      *
      * @param string $from
@@ -1113,25 +1161,16 @@ class App
         $post_data = [];
 
         if ($this->USE_PHPWFIO || $this->USE_CONVERSION) {
-            $TEMP_FILE = tempnam(sys_get_temp_dir(), "Y69");
-
             if ($this->USE_CONVERSION) {
-                $mime_type = mime_content_type($file);
-                $image = $this->readImage($file, $mime_type);
-
-                if (isset($image) && is_resource($image)) {
-                    imagejpeg($image, $TEMP_FILE, 90);
-                    imagedestroy($image);
-                } elseif (is_array($image) && isset($image['error'])) {
-                    return $image;
-                } else {
-                    return ['error' => 'NotResource'];
+                $contents = $this->convertImage($file);
+                if (is_array($contents) && isset($contents['error'])) {
+                    return $contents;
                 }
-            } elseif ($this->USE_PHPWFIO) {
-                copy($file, $TEMP_FILE);
+            } else {
+                $contents = file_get_contents($file);
             }
 
-            $post_data['file'] = new \CurlFile($TEMP_FILE, mime_content_type($TEMP_FILE), basename($TEMP_FILE));
+            $file_data['file'] = $contents;
         } else {
             $post_data['file'] = new \CurlFile($file, mime_content_type($file), basename($file));
         }
@@ -1150,18 +1189,20 @@ class App
         curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
         curl_setopt($ch, CURLOPT_TIMEOUT, $this->RETURN_TIMEOUT);
         curl_setopt($ch, CURLOPT_LOW_SPEED_TIME, $this->RETURN_TIMEOUT);
-        curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, $post_data);
+
+        if (isset($file_data)) {
+            $this->buildMultiPartRequest($ch, uniqid('', true), $post_data, $file_data);
+        } else {
+            curl_setopt($ch, CURLOPT_POST, true);
+            curl_setopt($ch, CURLOPT_POSTFIELDS, $post_data);
+        }
+
         curl_setopt($ch, CURLOPT_NOPROGRESS, false);
         curl_setopt($ch, CURLOPT_PROGRESSFUNCTION, [$this, 'cURLProgress']);
         curl_setopt($ch, CURLOPT_WRITEFUNCTION, [$this, 'cURLRead']);
         curl_setopt($ch, CURLOPT_USERPWD, $this->E621_LOGIN . ":" . $this->E621_API_KEY);
 
         $output = curl_exec($ch);
-
-        if (isset($TEMP_FILE) && file_exists($TEMP_FILE)) {
-            unlink($TEMP_FILE);
-        }
 
         if (!empty($this->RETURN_BUFFER)) {
             $output = $this->RETURN_BUFFER;
@@ -1213,6 +1254,33 @@ class App
     }
 
     /**
+     * @param $file
+     *
+     * @return array|false|resource|string|null
+     */
+    private function convertImage($file)
+    {
+        $mime_type = mime_content_type($file);
+        $image = $this->readImage($file, $mime_type);
+
+        if (isset($image) && is_resource($image)) {
+            ob_start();
+            imagejpeg($image, NULL, 90);
+            $contents = ob_get_clean();
+
+            imagedestroy($image);
+
+            return $contents;
+        }
+
+        if (is_array($image) && isset($image['error'])) {
+            return $image;
+        }
+
+        return ['error' => 'NotResource'];
+    }
+
+    /**
      * Read the image and create image resource object
      *
      * @param $file
@@ -1248,51 +1316,44 @@ class App
     }
 
     /**
-     * @param int      $delay
-     * @param array    $results
-     * @param callable $callable
+     * https://gist.github.com/iansltx/a6ed41d19852adf2e496
      *
-     * @return callable
-     */
-    private function applyCooldown($delay = 60, array $results, callable $callable)
-    {
-        $this->printout($this->LINE_BUFFER);
-        $this->parseError(is_array($results) ? $results['error'] : null);
-
-        $this->printout(' Waiting ' . $delay . ' seconds...');
-        sleep($delay);
-
-        return $callable();
-    }
-
-    /**
-     * Parse error name
+     * @param $ch
+     * @param $boundary
+     * @param $fields
+     * @param $files
      *
-     * @param $error
+     * @return mixed
      */
-    private function parseError($error)
+    private function buildMultiPartRequest($ch, $boundary, $fields, $files)
     {
-        if ($error == 'NoResults') {
-            $this->printout(" no matching images found!\n");
-        } elseif ($error == 'NotImage') {
-            $this->printout(" not a valid image!\n");
-        } elseif ($error == 'EmptyResult') {
-            $this->printout(" no reply from the server!\n");
-        } elseif ($error == 'UploadError') {
-            $this->printout(" upload error!\n");
-        } elseif ($error == 'NotResource') {
-            $this->printout(" conversion failed or image is corrupted!\n");
-        } elseif ($error == 'ShortLimitReached') {
-            $this->printout(" too many requests!\n");
-        } elseif ($error == 'LimitReached') {
-            $this->printout(" exceeded daily search limit!\n");
-        } elseif ($error == 'FailedLimitReached') {
-            $this->printout(" too many failed search attempts!\n");
-        } elseif (!empty($error)) {
-            $this->printout(" error: " . $error . "\n");
-        } else {
-            $this->printout(" empty response!\n");
+        $delimiter = '-------------' . $boundary;
+        $data = '';
+
+        foreach ($fields as $name => $content) {
+            $data .= "--" . $delimiter . "\r\n"
+                . 'Content-Disposition: form-data; name="' . $name . "\"\r\n\r\n"
+                . $content . "\r\n";
         }
+        foreach ($files as $name => $content) {
+            $data .= "--" . $delimiter . "\r\n"
+                . 'Content-Disposition: form-data; name="' . $name . '"; filename="' . $name . '"' . "\r\n\r\n"
+                . $content . "\r\n";
+        }
+
+        $data .= "--" . $delimiter . "--\r\n";
+
+        curl_setopt_array($ch, [
+            CURLOPT_POST => true,
+            CURLOPT_HTTPHEADER => [
+                'Content-Type: multipart/form-data; boundary=' . $delimiter,
+                'Content-Length: ' . strlen($data),
+                'Expect:',
+            ],
+            CURLOPT_POSTFIELDS => $data
+        ]);
+
+        return $ch;
     }
 
     /**
@@ -1307,25 +1368,16 @@ class App
         $post_data = [];
 
         if ($this->USE_PHPWFIO || $this->USE_CONVERSION) {
-            $TEMP_FILE = tempnam(sys_get_temp_dir(), "Y69");
-
             if ($this->USE_CONVERSION) {
-                $mime_type = mime_content_type($file);
-                $image = $this->readImage($file, $mime_type);
-
-                if (isset($image) && is_resource($image)) {
-                    imagejpeg($image, $TEMP_FILE, 90);
-                    imagedestroy($image);
-                } elseif (is_array($image) && isset($image['error'])) {
-                    return $image;
-                } else {
-                    return ['error' => 'NotResource'];
+                $contents = $this->convertImage($file);
+                if (is_array($contents) && isset($contents['error'])) {
+                    return $contents;
                 }
-            } elseif ($this->USE_PHPWFIO) {
-                copy($file, $TEMP_FILE);
+            } else {
+                $contents = file_get_contents($file);
             }
 
-            $post_data['file'] = new \CurlFile($TEMP_FILE, mime_content_type($TEMP_FILE), basename($TEMP_FILE));
+            $file_data['file'] = $contents;
         } else {
             $post_data['file'] = new \CurlFile($file, mime_content_type($file), basename($file));
         }
@@ -1364,17 +1416,19 @@ class App
         curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
         curl_setopt($ch, CURLOPT_TIMEOUT, $this->RETURN_TIMEOUT);
         curl_setopt($ch, CURLOPT_LOW_SPEED_TIME, $this->RETURN_TIMEOUT);
-        curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, $post_data);
+
+        if (isset($file_data)) {
+            $this->buildMultiPartRequest($ch, uniqid('', true), $post_data, $file_data);
+        } else {
+            curl_setopt($ch, CURLOPT_POST, true);
+            curl_setopt($ch, CURLOPT_POSTFIELDS, $post_data);
+        }
+
         curl_setopt($ch, CURLOPT_NOPROGRESS, false);
         curl_setopt($ch, CURLOPT_PROGRESSFUNCTION, [$this, 'cURLProgress']);
         curl_setopt($ch, CURLOPT_WRITEFUNCTION, [$this, 'cURLRead']);
 
         $output = curl_exec($ch);
-
-        if (isset($TEMP_FILE) && file_exists($TEMP_FILE)) {
-            unlink($TEMP_FILE);
-        }
 
         if (!empty($this->RETURN_BUFFER)) {
             $output = $this->RETURN_BUFFER;
@@ -1519,25 +1573,16 @@ class App
         $post_data = [];
 
         if ($this->USE_PHPWFIO || $this->USE_CONVERSION) {
-            $TEMP_FILE = tempnam(sys_get_temp_dir(), "Y69");
-
             if ($this->USE_CONVERSION) {
-                $mime_type = mime_content_type($file);
-                $image = $this->readImage($file, $mime_type);
-
-                if (isset($image) && is_resource($image)) {
-                    imagejpeg($image, $TEMP_FILE, 90);
-                    imagedestroy($image);
-                } elseif (is_array($image) && isset($image['error'])) {
-                    return $image;
-                } else {
-                    return ['error' => 'NotResource'];
+                $contents = $this->convertImage($file);
+                if (is_array($contents) && isset($contents['error'])) {
+                    return $contents;
                 }
-            } elseif ($this->USE_PHPWFIO) {
-                copy($file, $TEMP_FILE);
+            } else {
+                $contents = file_get_contents($file);
             }
 
-            $post_data['file'] = new \CurlFile($TEMP_FILE, mime_content_type($TEMP_FILE), basename($TEMP_FILE));
+            $file_data['file'] = $contents;
         } else {
             $post_data['file'] = new \CurlFile($file, mime_content_type($file), basename($file));
         }
@@ -1559,17 +1604,19 @@ class App
         curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
         curl_setopt($ch, CURLOPT_TIMEOUT, $this->RETURN_TIMEOUT);
         curl_setopt($ch, CURLOPT_LOW_SPEED_TIME, $this->RETURN_TIMEOUT);
-        curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, $post_data);
+
+        if (isset($file_data)) {
+            $this->buildMultiPartRequest($ch, uniqid('', true), $post_data, $file_data);
+        } else {
+            curl_setopt($ch, CURLOPT_POST, true);
+            curl_setopt($ch, CURLOPT_POSTFIELDS, $post_data);
+        }
+
         curl_setopt($ch, CURLOPT_NOPROGRESS, false);
         curl_setopt($ch, CURLOPT_PROGRESSFUNCTION, [$this, 'cURLProgress']);
         curl_setopt($ch, CURLOPT_WRITEFUNCTION, [$this, 'cURLRead']);
 
         $output = curl_exec($ch);
-
-        if (isset($TEMP_FILE) && file_exists($TEMP_FILE)) {
-            unlink($TEMP_FILE);
-        }
 
         if (!empty($this->RETURN_BUFFER)) {
             $output = $this->RETURN_BUFFER;
