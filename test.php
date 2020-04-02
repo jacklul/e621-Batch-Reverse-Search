@@ -12,10 +12,11 @@ if (!is_dir("build/images/")) {
     mkdir("build/images/", 0755, true);
 }
 
-echo "Downloading test images using tags 'falvie order:favcount'..." . PHP_EOL;
+$tags = 'falvie order:favcount rating:s';
+echo "Downloading test images using tags '$tags'..." . PHP_EOL;
 
 $ch = curl_init();
-curl_setopt($ch, CURLOPT_URL, "https://e621.net/posts.json?tags=" . urlencode("falvie order:favcount") . "&limit=1");
+curl_setopt($ch, CURLOPT_URL, "https://e621.net/posts.json?tags=" . urlencode($tags) . "&limit=1");
 curl_setopt($ch, CURLOPT_USERAGENT, "e621 Batch Reverse Search - Test Script");
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
