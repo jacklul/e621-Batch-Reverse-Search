@@ -13,6 +13,7 @@ TITLE e621 Batch Reverse Search
 
 SET SPATH=%~dp0
 SET PATH=%SPATH%\runtime\;%PATH%
+SET PHP_INI_SCAN_DIR=
 
 php "%SPATH%/e621BRS.phar" %*
 

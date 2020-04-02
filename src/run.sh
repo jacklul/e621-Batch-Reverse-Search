@@ -11,6 +11,7 @@
 
 SPATH=$(dirname $0)
 PATH=$SPATH/runtime:$PATH:
+PHP_INI_SCAN_DIR=
 
 if which php >/dev/null; then
 	php "$SPATH/e621BRS.phar" $@
