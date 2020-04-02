@@ -1064,6 +1064,7 @@ class App
         if ($retry) {
             $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
             if ($http_code === 429) {
+                print "\r";
                 return $this->applyCooldown(
                     1,
                     ['error' => 'ShortLimitReached'],
@@ -1255,10 +1256,10 @@ class App
      */
     private function applyCooldown($delay = 60, array $results, callable $callable)
     {
-        $this->printout("\r" . $this->LINE_BUFFER);
+        $this->printout($this->LINE_BUFFER);
         $this->parseError(is_array($results) ? $results['error'] : null);
 
-        $this->printout(' Waiting ' . $delay . ' seconds for limit to expire...');
+        $this->printout(' Waiting ' . $delay . ' seconds...');
         sleep($delay);
 
         return $callable();
@@ -1478,7 +1479,7 @@ class App
         }
 
         if ($total > 0) {
-            print(str_repeat(' ', strlen($this->LINE_BUFFER) + 25) . "\r" . $this->LINE_BUFFER . ' ' . round(($progress * 100) / $total, 0)) . "%     \r";
+            print(str_repeat(' ', strlen($this->LINE_BUFFER) + 15) . "\r" . $this->LINE_BUFFER . ' ' . round(($progress * 100) / $total, 0)) . "%     \r";
         }
 
         usleep(100);
