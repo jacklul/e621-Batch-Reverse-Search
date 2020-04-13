@@ -30,6 +30,10 @@
 ; Whenever to do MD5 search or not (default: true)
 ;MD5_SEARCH=true
 
+; Whenever to do batch MD5 searches before everything else (default: true)
+; This prefetches all MD5 searches by doing batch queries to the API
+;MD5_BATCH_SEARCH=true
+
 ; Whenever to do Reverse search or not (default: true)
 ;REVERSE_SEARCH=true
 

@@ -30,7 +30,7 @@ class App
      *
      * @var string
      */
-    private $VERSION = '1.6.2';
+    private $VERSION = '1.7.0';
 
     /**
      * App update URL
@@ -108,6 +108,13 @@ class App
      * @var bool
      */
     private $MD5_SEARCH = true;
+
+    /**
+     * Batch MD5 search is enabled or not
+     *
+     * @var bool
+     */
+    private $MD5_BATCH_SEARCH = true;
 
     /**
      * Reverse search is enabled or not
@@ -229,6 +236,13 @@ class App
      * @var string
      */
     private $RETURN_TIMEOUT = 60;
+
+    /**
+     * Cache for MD5 search
+     *
+     * @var string
+     */
+    private $MD5_CACHE = [];
 
     /**
      * App constructor
@@ -547,6 +561,10 @@ class App
                 $this->MD5_SEARCH = (bool)$config['MD5_SEARCH'];
             }
 
+            if (isset($config['MD5_BATCH_SEARCH'])) {
+                $this->MD5_BATCH_SEARCH = (bool)$config['MD5_BATCH_SEARCH'];
+            }
+
             if (isset($config['REVERSE_SEARCH'])) {
                 $this->REVERSE_SEARCH = (bool)$config['REVERSE_SEARCH'];
             }
@@ -771,8 +789,56 @@ class App
             }
 
             $this->printout("\n");
-
             $this->IS_RUNNING = true;
+
+            if ($this->MD5_SEARCH && $this->MD5_BATCH_SEARCH) {
+                $this->LINE_BUFFER = "MD5 grouped search is running...";
+                $this->printout($this->LINE_BUFFER . "\r");
+
+                $this->MD5_CACHE = [];
+                $entries = [];
+
+                $i = 0;
+                $iMax = count($files) - 1;
+                $maxPerRequest = 100;
+
+                $iRequest = 1;
+                $iRequestTotal = ceil($iMax/$maxPerRequest);
+                do {
+                    $entries[] = $files[$i];
+
+                    if ($i === $iMax || count($entries) === $maxPerRequest) {
+                        $this->printout("\r");
+                        $this->printout($this->LINE_BUFFER . ' ' . $iRequest . '/' . $iRequestTotal);
+                        $iRequest++;
+
+                        $md5_list = '';
+                        foreach ($entries as $entry) {
+                            if (!empty($md5_list)) {
+                                $md5_list .= ',';
+                            }
+
+                            $md5_list .= md5_file($this->PATH_IMAGES . '/' . $entry);
+                        }
+
+                        $entries = [];
+                        $raw = $this->apiRequest('md5:' . $md5_list, 1, 100);
+                        $results = json_decode($raw, true);
+
+                        if (isset($results['posts']) && count($results['posts']) > 0) {
+                            foreach ($results['posts'] as $post) {
+                                $this->MD5_CACHE[$post['file']['md5']] = $post['id'];
+                            }
+                        }
+                    }
+
+                    $i++;
+                } while($i <= $iMax);
+
+                $this->printout("\r" . $this->LINE_BUFFER . " done (" . count($this->MD5_CACHE) . ")!\n");
+                $this->printout("\n");
+            }
+
             foreach ($files as $entry) {
                 if ($this->IS_RUNNING) {
                     $files_count++;
@@ -785,11 +851,16 @@ class App
                         $this->LINE_BUFFER = " Trying md5 sum...";
                         $this->printout($this->LINE_BUFFER);
 
-                        $raw = $this->apiRequest('md5:' . md5_file($this->PATH_IMAGES . '/' . $entry));
-                        $results = json_decode($raw, true);
+                        $md5_file = md5_file($this->PATH_IMAGES . '/' . $entry);
+                        if ($this->MD5_BATCH_SEARCH && isset($this->MD5_CACHE[$md5_file])) {
+                            $results[0]['id'] = $this->MD5_CACHE[$md5_file];
+                        } else {
+                            $raw = $this->apiRequest('md5:' . $md5_file);
+                            $results = json_decode($raw, true);
 
-                        if (isset($results['posts']) && count($results['posts']) > 0) {
-                            $results = $results['posts'];
+                            if (isset($results['posts']) && count($results['posts']) > 0) {
+                                $results = $results['posts'];
+                            }
                         }
 
                         print("\r" . $this->LINE_BUFFER);
