@@ -30,7 +30,7 @@ class App
      *
      * @var string
      */
-    private $VERSION = '1.7.0';
+    private $VERSION = '1.7.1';
 
     /**
      * App update URL
@@ -791,51 +791,47 @@ class App
             $this->printout("\n");
             $this->IS_RUNNING = true;
 
-            if ($this->MD5_SEARCH && $this->MD5_BATCH_SEARCH) {
-                $this->LINE_BUFFER = "MD5 grouped search is running...";
+            if ($this->MD5_SEARCH && $this->MD5_BATCH_SEARCH && count($files) > 0) {
+                $this->LINE_BUFFER = "Batch MD5 search...";
                 $this->printout($this->LINE_BUFFER . "\r");
 
                 $this->MD5_CACHE = [];
-                $entries = [];
 
-                $i = 0;
-                $iMax = count($files) - 1;
-                $maxPerRequest = 100;
+                $page = 1;
+                $perPage = 100;
+                $totalPages = ceil(count($files) / $perPage);
 
-                $iRequest = 1;
-                $iRequestTotal = ceil($iMax/$maxPerRequest);
-                do {
-                    $entries[] = $files[$i];
+                while (true) {
+                    $new_files = array_slice($files, $perPage * ($page - 1), $perPage);
 
-                    if ($i === $iMax || count($entries) === $maxPerRequest) {
-                        $this->printout("\r");
-                        $this->printout($this->LINE_BUFFER . ' ' . $iRequest . '/' . $iRequestTotal);
-                        $iRequest++;
-
-                        $md5_list = '';
-                        foreach ($entries as $entry) {
-                            if (!empty($md5_list)) {
-                                $md5_list .= ',';
-                            }
-
-                            $md5_list .= md5_file($this->PATH_IMAGES . '/' . $entry);
-                        }
-
-                        $entries = [];
-                        $raw = $this->apiRequest('md5:' . $md5_list, 1, 100);
-                        $results = json_decode($raw, true);
-
-                        if (isset($results['posts']) && count($results['posts']) > 0) {
-                            foreach ($results['posts'] as $post) {
-                                $this->MD5_CACHE[$post['file']['md5']] = $post['id'];
-                            }
-                        }
+                    if (count($new_files) === 0) {
+                        break;
                     }
 
-                    $i++;
-                } while($i <= $iMax);
+                    $this->printout("\r");
+                    $this->printout($this->LINE_BUFFER . ' ' . $page . '/' . $totalPages);
+                    $page++;
 
-                $this->printout("\r" . $this->LINE_BUFFER . " done (" . count($this->MD5_CACHE) . ")!\n");
+                    $md5_list = '';
+                    foreach ($new_files as $entry) {
+                        if (!empty($md5_list)) {
+                            $md5_list .= ',';
+                        }
+
+                        $md5_list .= md5_file($this->PATH_IMAGES . '/' . $entry);
+                    }
+
+                    $raw = $this->apiRequest('md5:' . $md5_list, 1, 100);
+                    $results = json_decode($raw, true);
+
+                    if (isset($results['posts']) && count($results['posts']) > 0) {
+                        foreach ($results['posts'] as $post) {
+                            $this->MD5_CACHE[$post['file']['md5']] = $post['id'];
+                        }
+                    }
+                }
+
+                $this->printout("\r" . $this->LINE_BUFFER . " done\n");
                 $this->printout("\n");
             }
 
