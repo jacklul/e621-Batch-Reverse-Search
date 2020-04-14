@@ -31,7 +31,10 @@ Install **PHP library** (>=5.6), cURL, GD and zip extensions - `sudo apt-get ins
 ## Logging in (for e621 IQDB search):
 
 - Rename `config.cfg.example` to `config.cfg`
-- Fill your login details in `E621_LOGIN` and `E621_API_KEY` variables
+- Fill your login details inside it:
+    - `E621_LOGIN` - your e621 username
+    - `E621_API_KEY` - obtained from `e621 -> Account -> Manage API Access`
+
 
 ## Advanced
 - You can pass any directory as an argument to the run script (on Windows you can move a directory over `run.bat`)
