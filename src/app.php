@@ -30,7 +30,7 @@ class App
      *
      * @var string
      */
-    private $VERSION = '1.7.1';
+    private $VERSION = '1.7.2';
 
     /**
      * App update URL
@@ -385,11 +385,7 @@ class App
 
                     if (version_compare($this->VERSION, $REMOTE_VERSION, '<')) {
                         $this->printout(" update available (v" . $REMOTE_VERSION . ")\n");
-
-                        if (!empty($update_check['body'])) {
-                            $this->printout("\nUpdate summary:\n");
-                            $this->printout("\n" . $update_check['body'] . "\n\n");
-                        }
+                        $this->printout("For changelog check https://github.com/jacklul/e621-Batch-Reverse-Search/releases\n\n");
 
                         $this->printout("Do you wish to update now? [Y]es*/[N]o: ");
 
@@ -818,7 +814,9 @@ class App
                             $md5_list .= ',';
                         }
 
-                        $md5_list .= md5_file($this->PATH_IMAGES . '/' . $entry);
+                        $md5_file = md5_file($this->PATH_IMAGES . '/' . $entry);
+                        $this->MD5_CACHE[$md5_file] = [];
+                        $md5_list .= $md5_file;
                     }
 
                     $raw = $this->apiRequest('md5:' . $md5_list, 1, 100);
@@ -849,7 +847,11 @@ class App
 
                         $md5_file = md5_file($this->PATH_IMAGES . '/' . $entry);
                         if ($this->MD5_BATCH_SEARCH && isset($this->MD5_CACHE[$md5_file])) {
-                            $results[0]['id'] = $this->MD5_CACHE[$md5_file];
+                            $results = [];
+
+                            if (is_numeric($this->MD5_CACHE[$md5_file])) {
+                                $results[0]['id'] = $this->MD5_CACHE[$md5_file];
+                            }
                         } else {
                             $raw = $this->apiRequest('md5:' . $md5_file);
                             $results = json_decode($raw, true);
