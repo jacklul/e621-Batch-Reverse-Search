@@ -30,7 +30,7 @@ class App
      *
      * @var string
      */
-    private $VERSION = '1.7.2';
+    private $VERSION = '1.7.3';
 
     /**
      * App update URL
@@ -251,6 +251,7 @@ class App
      */
     public function __construct($arg = null)
     {
+        ini_set('memory_limit', '1024M');
         set_time_limit(0);
         error_reporting(E_ERROR);
 
