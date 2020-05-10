@@ -30,7 +30,7 @@ class App
      *
      * @var string
      */
-    private $VERSION = '1.7.3';
+    private $VERSION = '1.8.0';
 
     /**
      * App update URL
@@ -122,15 +122,6 @@ class App
      * @var bool
      */
     private $REVERSE_SEARCH = true;
-
-    /**
-     * Use php-wfio extension or not
-     *  This is required for UTF-8 filename support on Windows
-     *  (see https://github.com/kenjiuno/php-wfio)
-     *
-     * @var bool
-     */
-    private $USE_PHPWFIO = true;
 
     /**
      * Convert image into JPEG with '90' quality before uploading
@@ -570,10 +561,6 @@ class App
                 die("No search method set, check config!\n\n");
             }
 
-            if (isset($config['USE_PHPWFIO'])) {
-                $this->USE_PHPWFIO = (bool)$config['USE_PHPWFIO'];
-            }
-
             if (isset($config['USE_CONVERSION'])) {
                 $this->USE_CONVERSION = (bool)$config['USE_CONVERSION'];
             }
@@ -683,22 +670,7 @@ class App
         $this->printout("\n");
 
         if ($this->CUSTOM_PATH) {
-            $this->printout("Using path: " . str_replace("wfio://", "", $this->PATH_IMAGES) . "\n\n");
-        }
-
-        if (!$this->IS_LINUX) {
-            if (!extension_loaded("wfio") && $this->USE_PHPWFIO) {
-                $this->printout("WARNING: 'php_wfio.dll' extension not loaded - UTF-8 filename support will be disabled!\n\n");
-                $this->USE_PHPWFIO = false;
-            }
-
-            if ($this->USE_PHPWFIO) {
-                $this->PATH_IMAGES = "wfio://" . $this->PATH_IMAGES;
-                $this->PATH_IMAGES_FOUND = "wfio://" . $this->PATH_IMAGES_FOUND;
-                $this->PATH_IMAGES_NOT_FOUND = "wfio://" . $this->PATH_IMAGES_NOT_FOUND;
-            }
-        } else {
-            $this->USE_PHPWFIO = false;
+            $this->printout("Using path: " . $this->PATH_IMAGES . "\n\n");
         }
 
         $this->main();
@@ -747,7 +719,7 @@ class App
                         $file_size = filesize($this->PATH_IMAGES . '/' . $entry);
                         $image_size = getimagesize($this->PATH_IMAGES . '/' . $entry);
 
-                        if (urlencode($entry) != $entry && !$this->USE_PHPWFIO && !$this->IS_LINUX) {
+                        if (urlencode($entry) != $entry && (float)PHP_VERSION < 7.2) {
                             $files_error['encoding'] = true;
                         } elseif (!in_array(strtolower(pathinfo($entry, PATHINFO_EXTENSION)), ['jpg', 'jpeg', 'png', 'gif'])) {
                             $files_error['file_type'] = true;
@@ -770,7 +742,7 @@ class App
             }
 
             if (isset($files_error['encoding'])) {
-                $this->printout("WARNING: Some files contained non-standard characters in their names and were ignored!\n");
+                $this->printout("WARNING: Some files contained UTF-8 characters in their names and were ignored, please use at least PHP 7.2 to support them!\n");
             }
 
             if (isset($files_error['file_type'])) {
@@ -837,7 +809,7 @@ class App
             foreach ($files as $entry) {
                 if ($this->IS_RUNNING) {
                     $files_count++;
-                    $this->printout('[' . ($files_count) . "/$files_total] Searching '" . (($this->USE_PHPWFIO) ? utf8_decode($entry) : $entry) . "':\n");
+                    $this->printout('[' . ($files_count) . "/$files_total] Searching '" . $entry . "':\n");
 
                     $results = null;
                     if ($this->MD5_SEARCH) {
@@ -1230,14 +1202,10 @@ class App
 
         $post_data = [];
 
-        if ($this->USE_PHPWFIO || $this->USE_CONVERSION) {
-            if ($this->USE_CONVERSION) {
-                $contents = $this->convertImage($file);
-                if (is_array($contents) && isset($contents['error'])) {
-                    return $contents;
-                }
-            } else {
-                $contents = file_get_contents($file);
+        if ($this->USE_CONVERSION) {
+            $contents = $this->convertImage($file);
+            if (is_array($contents) && isset($contents['error'])) {
+                return $contents;
             }
 
             $file_data['file'] = $contents;
@@ -1437,14 +1405,10 @@ class App
     {
         $post_data = [];
 
-        if ($this->USE_PHPWFIO || $this->USE_CONVERSION) {
-            if ($this->USE_CONVERSION) {
-                $contents = $this->convertImage($file);
-                if (is_array($contents) && isset($contents['error'])) {
-                    return $contents;
-                }
-            } else {
-                $contents = file_get_contents($file);
+        if ($this->USE_CONVERSION) {
+            $contents = $this->convertImage($file);
+            if (is_array($contents) && isset($contents['error'])) {
+                return $contents;
             }
 
             $file_data['file'] = $contents;
@@ -1642,14 +1606,10 @@ class App
     {
         $post_data = [];
 
-        if ($this->USE_PHPWFIO || $this->USE_CONVERSION) {
-            if ($this->USE_CONVERSION) {
-                $contents = $this->convertImage($file);
-                if (is_array($contents) && isset($contents['error'])) {
-                    return $contents;
-                }
-            } else {
-                $contents = file_get_contents($file);
+        if ($this->USE_CONVERSION) {
+            $contents = $this->convertImage($file);
+            if (is_array($contents) && isset($contents['error'])) {
+                return $contents;
             }
 
             $file_data['file'] = $contents;

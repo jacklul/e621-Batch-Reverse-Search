@@ -13,13 +13,17 @@ Removed services:
 
 #### Windows
 
-Package comes with compiled **PHP 5.6 library** (x86 Non Thread Safe) and all required extensions
+Package comes with compiled **PHP 7.2 library** (x86 Non Thread Safe) and all required extensions.
 
-You will need **Visual C++ 2012 Redistributable (x86)** for it to run - https://www.microsoft.com/en-us/download/details.aspx?id=30679
+You will need **Visual C++ 2015 Redistributable (x86)** for it to run - https://www.microsoft.com/en-us/download/details.aspx?id=52685
 
 #### Linux
 
-Install **PHP library** (>=5.6), cURL, GD and zip extensions - `sudo apt-get install php-cli php-curl php-gd php-zip`
+Install **PHP library** (>=7.2), cURL, GD and zip extensions - `sudo apt-get install php-cli php-curl php-gd php-zip`
+
+#### Warning about PHP version
+
+While the script will still work with PHP >=5.6 it won't be able to work with some special characters that can be in the file names, PHP 7.2+ is recommended.
 
 ## Usage:
 - Put images into 'images' folder
@@ -34,7 +38,6 @@ Install **PHP library** (>=5.6), cURL, GD and zip extensions - `sudo apt-get ins
 - Fill your login details inside it:
     - `E621_LOGIN` - your e621 username
     - `E621_API_KEY` - obtained from `e621 -> Account -> Manage API Access`
-
 
 ## Advanced
 - You can pass any directory as an argument to the run script (on Windows you can move a directory over `run.bat`)
