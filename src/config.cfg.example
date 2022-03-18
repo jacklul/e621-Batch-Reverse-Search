@@ -60,8 +60,10 @@ E621_API_KEY=
 ;FORCE_MULTI_SEARCH=false
 
 ; API key for 'saucenao.com' service (default: '')
-;  This is not required but lifts some limitations
 ;SAUCENAO_API_KEY=
+
+; API key for 'fuzzysearch.net' service (default: '')
+;FUZZYSEARCH_API_KEY=
 
 ; Maximum time the script waits for reply per image search (default: 60)
 ;  Set it to higher number on weaker connections or errors like 'no reply from the server'

@@ -5,9 +5,7 @@ A script that iterates over a directory and performs a reverse search for every 
 Used services: 
 - [e621.net/iqdb_queries](https://e621.net/iqdb_queries)
 - [saucenao.com](https://saucenao.com)
-
-Removed services: 
-- [~~iqdb.harry.lu~~](http://iqdb.harry.lu) - discontinued 
+- [fuzzysearch.net](https://fuzzysearch.net)
 
 ## Requirements:
 

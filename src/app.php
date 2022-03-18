@@ -30,7 +30,7 @@ class App
      *
      * @var string
      */
-    private $VERSION = '1.8.0';
+    private $VERSION = '1.9.0';
 
     /**
      * App update URL
@@ -164,6 +164,13 @@ class App
      * @var string
      */
     private $SAUCENAO_API_KEY = '';
+
+    /**
+     * API key for 'fuzzysearch.net' service
+     *
+     * @var string
+     */
+    private $FUZZYSEARCH_API_KEY = '';
 
     /**
      * Is the main loop running? (for signal handler)
@@ -578,6 +585,10 @@ class App
                 $this->SAUCENAO_API_KEY = $config['SAUCENAO_API_KEY'];
             }
 
+            if (isset($config['FUZZYSEARCH_API_KEY'])) {
+                $this->FUZZYSEARCH_API_KEY = $config['FUZZYSEARCH_API_KEY'];
+            }
+
             if (isset($config['RETURN_TIMEOUT'])) {
                 $this->RETURN_TIMEOUT = $config['RETURN_TIMEOUT'];
             }
@@ -867,7 +878,7 @@ class App
                             print("\r" . $this->LINE_BUFFER);
 
                             if ($this->USE_MULTI_SEARCH) {
-                                /*if (!is_array($results) || isset($results['error']) || $this->FORCE_MULTI_SEARCH) {
+                                if (!empty($this->FUZZYSEARCH_API_KEY) && (!is_array($results) || isset($results['error']) || $this->FORCE_MULTI_SEARCH)) {
                                     if ($this->FORCE_MULTI_SEARCH) {
                                         $results_prev = null;
                                         if (is_array($results) && count($results) > 0 && !isset($results['error'])) {
@@ -878,20 +889,20 @@ class App
                                         $service_prev = $service;
                                     }
 
-                                    $service = 'iqdb.harry.lu';
+                                    $service = 'fuzzysearch.net';
 
                                     if (isset($results['error']) || !is_array($results)) {
                                         $this->parseError(is_array($results) ? $results['error'] : null);
                                     }
 
-                                    $this->LINE_BUFFER = " Trying reverse search #2 (iqdb.harry.lu)...";
+                                    $this->LINE_BUFFER = " Trying reverse search #2 (fuzzysearch.net)...";
                                     $this->printout($this->LINE_BUFFER);
 
-                                    $results = $this->reverseSearchHarryLu($this->PATH_IMAGES . '/' . $entry);
+                                    $results = $this->reverseSearchFuzzySearch($this->PATH_IMAGES . '/' . $entry);
 
                                     if ($this->FORCE_MULTI_SEARCH) {
                                         if (isset($results_prev) && isset($service_prev) && $results_prev !== null) {
-                                            /** @noinspection SlowArrayOperationsInLoopInspection *//*
+                                            /** @noinspection SlowArrayOperationsInLoopInspection */
                                             $results = array_merge($results_prev, $results);
                                             $results = array_unique($results);
                                             $service = $service_prev . ', ' . $service;
@@ -899,9 +910,9 @@ class App
                                     }
 
                                     print("\r" . $this->LINE_BUFFER);
-                                }*/
+                                }
 
-                                if (!is_array($results) || isset($results['error']) || $this->FORCE_MULTI_SEARCH) {
+                                if (!empty($this->SAUCENAO_API_KEY) && (!is_array($results) || isset($results['error']) || $this->FORCE_MULTI_SEARCH)) {
                                     if ($this->FORCE_MULTI_SEARCH) {
                                         $results_prev = null;
                                         if (is_array($results) && count($results) > 0 && !isset($results['error'])) {
@@ -1350,7 +1361,7 @@ class App
      *
      * @return mixed
      */
-    private function buildMultiPartRequest($ch, $boundary, $fields, $files)
+    private function buildMultiPartRequest($ch, $boundary, $fields, $files, $headers = [])
     {
         $delimiter = '-------------' . $boundary;
         $data = '';
@@ -1370,11 +1381,10 @@ class App
 
         curl_setopt_array($ch, [
             CURLOPT_POST => true,
-            CURLOPT_HTTPHEADER => [
+            CURLOPT_HTTPHEADER => array_merge([
                 'Content-Type: multipart/form-data; boundary=' . $delimiter,
                 'Content-Length: ' . strlen($data),
-                'Expect:',
-            ],
+            ], $headers),
             CURLOPT_POSTFIELDS => $data
         ]);
 
@@ -1452,11 +1462,11 @@ class App
             print "\nOUTPUT:\n" . $output . "\n";
         }
 
-        $result = json_decode($output, true);
-
         if (empty($output)) {
             return ['error' => 'EmptyResult'];
         }
+
+        $result = json_decode($output, true);
 
         $matches = [];
         if (isset($result['header']['status'])) {
@@ -1492,6 +1502,113 @@ class App
         } elseif (strpos($output, 'Specified file does not seem to be an image') !== false) {
             return ['error' => 'NotImage'];
         } elseif (strpos($output, 'Low similarity results have been hidden.') !== false) {
+            return ['error' => 'NoResults'];
+        }
+
+        return $output;
+    }
+
+    /**
+     * Perform reverse search using fuzzysearch.net
+     *
+     * @param string $file
+     *
+     * @return array|string|bool
+     */
+    private function reverseSearchFuzzySearch($file)
+    {
+        $post_data = [];
+
+        if ($this->USE_CONVERSION) {
+            $contents = $this->convertImage($file);
+            if (is_array($contents) && isset($contents['error'])) {
+                return $contents;
+            }
+
+            $file_data['image'] = $contents;
+        } else {
+            $file_data['image'] = file_get_contents($file);
+            $post_data['file'] = new \CurlFile($file, mime_content_type($file), basename($file));
+        }
+
+        if (!empty($this->RETURN_BUFFER)) {
+            $this->RETURN_BUFFER = '';
+        }
+
+        $ch = curl_init();
+
+        curl_setopt($ch, CURLOPT_URL, "https://api.fuzzysearch.net/image?type=close");
+        curl_setopt($ch, CURLOPT_USERAGENT, $this->USER_AGENT);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+        /** @noinspection CurlSslServerSpoofingInspection */
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
+        curl_setopt($ch, CURLOPT_TIMEOUT, $this->RETURN_TIMEOUT);
+        curl_setopt($ch, CURLOPT_LOW_SPEED_TIME, $this->RETURN_TIMEOUT);
+
+        $headers = [];
+        if (!empty($this->FUZZYSEARCH_API_KEY)) {
+            $headers = ['X-API-Key: ' . $this->FUZZYSEARCH_API_KEY];
+            curl_setopt($ch, CURLOPT_HTTPHEADER, ['X-API-Key: ' . $this->FUZZYSEARCH_API_KEY]);
+        }
+
+        if (isset($file_data)) {
+            $this->buildMultiPartRequest($ch, uniqid('', true), $post_data, $file_data, $headers);
+        } else {
+            curl_setopt($ch, CURLOPT_POST, true);
+            curl_setopt($ch, CURLOPT_POSTFIELDS, $post_data);
+        }
+
+        curl_setopt($ch, CURLOPT_NOPROGRESS, false);
+        curl_setopt($ch, CURLOPT_PROGRESSFUNCTION, [$this, 'cURLProgress']);
+        curl_setopt($ch, CURLOPT_WRITEFUNCTION, [$this, 'cURLRead']);
+
+        $output = curl_exec($ch);
+
+        if (!empty($this->RETURN_BUFFER)) {
+            $output = $this->RETURN_BUFFER;
+        }
+
+        if ($this->DEBUG) {
+            print "\nOUTPUT:\n" . $output . "\n";
+        }
+
+        if (empty($output)) {
+            return ['error' => 'EmptyResult'];
+        }
+
+        $result = json_decode($output, true);
+
+        $matches = [];
+        if (isset($result['matches']) && count($result['matches']) > 0) {
+            foreach ($result['matches'] as $this_result) {
+                switch (strtolower($this_result['site'])) {
+                    case 'furaffinity':
+                        $match_url = 'https://furaffinity.net/view/' . $this_result['site_id_str'];
+                        break;
+                    case 'e621':
+                        $match_url = 'https://e621.net/posts/' . $this_result['site_id_str'];
+                        break;
+                    case 'twitter':
+                        $match_url = 'https://twitter.com/' . $this_result['artists'][0] . '/status/' . $this_result['site_id_str'];
+                        break;
+                    case 'weasyl':
+                        $match_url = 'https://www.weasyl.com/submission/' . $this_result['site_id_str'];
+                        break;
+                    default:
+                        $match_url = $this_result['url'] . '(' . $this_result['site'] . ', ID = ' . $this_result['site_id_str'] . ')';
+                }
+
+                $matches[] = $match_url;
+            }
+
+            return $matches;
+        } elseif (isset($result['message'])) {
+            return ['error' => $result['message']];
+        }
+
+        if (count($matches) === 0) {
             return ['error' => 'NoResults'];
         }
 
@@ -1573,93 +1690,5 @@ class App
         }
 
         return $length;
-    }
-
-    /**
-     * Perform reverse search using iqdb.harry.lu
-     *
-     * @param string $file
-     *
-     * @return array|string|bool
-     */
-    private function reverseSearchHarryLu($file)
-    {
-        $post_data = [];
-
-        if ($this->USE_CONVERSION) {
-            $contents = $this->convertImage($file);
-            if (is_array($contents) && isset($contents['error'])) {
-                return $contents;
-            }
-
-            $file_data['file'] = $contents;
-        } else {
-            $post_data['file'] = new \CurlFile($file, mime_content_type($file), basename($file));
-        }
-
-        $post_data['service[]'] = '0';
-        $post_data['MAX_FILE_SIZE'] = '8388608';
-
-        if (!empty($this->RETURN_BUFFER)) {
-            $this->RETURN_BUFFER = '';
-        }
-
-        $ch = curl_init();
-
-        curl_setopt($ch, CURLOPT_URL, "https://iqdb.harry.lu");
-        curl_setopt($ch, CURLOPT_USERAGENT, $this->USER_AGENT);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        /** @noinspection CurlSslServerSpoofingInspection */
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
-        curl_setopt($ch, CURLOPT_TIMEOUT, $this->RETURN_TIMEOUT);
-        curl_setopt($ch, CURLOPT_LOW_SPEED_TIME, $this->RETURN_TIMEOUT);
-
-        if (isset($file_data)) {
-            $this->buildMultiPartRequest($ch, uniqid('', true), $post_data, $file_data);
-        } else {
-            curl_setopt($ch, CURLOPT_POST, true);
-            curl_setopt($ch, CURLOPT_POSTFIELDS, $post_data);
-        }
-
-        curl_setopt($ch, CURLOPT_NOPROGRESS, false);
-        curl_setopt($ch, CURLOPT_PROGRESSFUNCTION, [$this, 'cURLProgress']);
-        curl_setopt($ch, CURLOPT_WRITEFUNCTION, [$this, 'cURLRead']);
-
-        $output = curl_exec($ch);
-
-        if (!empty($this->RETURN_BUFFER)) {
-            $output = $this->RETURN_BUFFER;
-        }
-
-        if ($this->DEBUG) {
-            print "\nOUTPUT:\n" . $output . "\n";
-        }
-
-        if (preg_match_all("/Probable match.*?href='(.*?e621\.net.*?\/show\/\d+)/", $output, $matches)) {
-            return count($matches[1]) > 10 ? array_slice($matches[1], 0, 10) : $matches[1];
-        }
-
-        if (empty($output)) {
-            return ['error' => 'EmptyResult'];
-        }
-
-        if (strpos($output, 'We didn\'t find any results that were highly-relevant')) {
-            return ['error' => 'NoResults'];
-        }
-
-        if (strpos($output, 'No matches returned') !== false) {
-            return ['error' => 'NoResults'];
-        }
-
-        if (strpos($output, 'Not an image')) {
-            return ['error' => 'NotImage'];
-        }
-
-        if (strpos($output, 'Upload error')) {
-            return ['error' => 'UploadError'];
-        }
-
-        return $output;
     }
 }
