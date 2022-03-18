@@ -827,7 +827,7 @@ class App
                     }
 
                     if (isset($results[0]['id'])) {
-                        $results[0] = 'https://e621.net/post/show/' . $results[0]['id'];
+                        $results[0] = 'https://e621.net/posts/' . $results[0]['id'];
                     } else {
                         if ($this->MD5_SEARCH) {
                             if (is_array($results)) {
