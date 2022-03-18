@@ -838,7 +838,7 @@ class App
                     }
 
                     if (isset($results[0]['id'])) {
-                        $results[0] = 'https://e621.net/post/show/' . $results[0]['id'];
+                        $results[0] = 'https://e621.net/posts/' . $results[0]['id'];
                     } else {
                         if ($this->MD5_SEARCH) {
                             if (is_array($results)) {
@@ -1585,19 +1585,19 @@ class App
             foreach ($result['matches'] as $this_result) {
                 switch (strtolower($this_result['site'])) {
                     case 'furaffinity':
-                        $match_url = 'https://furaffinity.net/view/' . $this_result['site_id'];
+                        $match_url = 'https://furaffinity.net/view/' . $this_result['site_id_str'];
                         break;
                     case 'e621':
-                        $match_url = 'https://e621.net/posts/' . $this_result['site_id'];
+                        $match_url = 'https://e621.net/posts/' . $this_result['site_id_str'];
                         break;
                     case 'twitter':
-                        $match_url = 'https://twitter.com/' . $this_result['artists'][0] . '/status/' . $this_result['site_id'];
+                        $match_url = 'https://twitter.com/' . $this_result['artists'][0] . '/status/' . $this_result['site_id_str'];
                         break;
                     case 'weasyl':
-                        $match_url = 'https://www.weasyl.com/submission/' . $this_result['site_id'];
+                        $match_url = 'https://www.weasyl.com/submission/' . $this_result['site_id_str'];
                         break;
                     default:
-                        $match_url = $this_result['url'] . '(' . $this_result['site'] . ', ID = ' . $this_result['site_id'] . ')';
+                        $match_url = $this_result['url'] . '(' . $this_result['site'] . ', ID = ' . $this_result['site_id_str'] . ')';
                 }
 
                 $matches[] = $match_url;
