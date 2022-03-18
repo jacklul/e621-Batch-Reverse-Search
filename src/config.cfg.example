@@ -62,10 +62,6 @@ E621_API_KEY=
 ; API key for 'saucenao.com' service (default: '')
 ;SAUCENAO_API_KEY=
 
-; Whenever to search all image sites supported by 'saucenao.com' (default: false)
-;  By default only e621 is searched
-;SAUCENAO_SEARCH_ALL=false
-
 ; API key for 'fuzzysearch.net' service (default: '')
 ;FUZZYSEARCH_API_KEY=
 

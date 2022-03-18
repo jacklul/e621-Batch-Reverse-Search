@@ -166,13 +166,6 @@ class App
     private $SAUCENAO_API_KEY = '';
 
     /**
-     * Whenever to search all image sites supported by 'saucenao.com'
-     *
-     * @var bool
-     */
-    private $SAUCENAO_SEARCH_ALL = false;
-
-    /**
      * API key for 'fuzzysearch.net' service
      *
      * @var string
@@ -590,10 +583,6 @@ class App
 
             if (isset($config['SAUCENAO_API_KEY'])) {
                 $this->SAUCENAO_API_KEY = $config['SAUCENAO_API_KEY'];
-            }
-
-            if (isset($config['SAUCENAO_SEARCH_ALL'])) {
-                $this->SAUCENAO_SEARCH_ALL = (bool)$config['SAUCENAO_SEARCH_ALL'];
             }
 
             if (isset($config['FUZZYSEARCH_API_KEY'])) {
@@ -1317,8 +1306,6 @@ class App
             imagejpeg($image, NULL, 90);
             $contents = ob_get_clean();
 
-            imagedestroy($image);
-
             return $contents;
         }
 
@@ -1430,14 +1417,7 @@ class App
         $post_data['frame'] = '1';
         $post_data['hide'] = '0';
         $post_data['numres'] = '10';
-
-        $db = '29';
-        if ($this->SAUCENAO_SEARCH_ALL) {
-            $post_data['db'] = '999';
-            $db = '999';
-        } else {
-            $post_data['db'] = '29';
-        }
+        $post_data['db'] = '999';
 
         if (!empty($this->SAUCENAO_API_KEY)) {
             $post_data['api_key'] = $this->SAUCENAO_API_KEY;
@@ -1451,7 +1431,7 @@ class App
 
         $ch = curl_init();
 
-        curl_setopt($ch, CURLOPT_URL, "https://saucenao.com/search.php?db=" . $db);
+        curl_setopt($ch, CURLOPT_URL, "https://saucenao.com/search.php?db=999");
         curl_setopt($ch, CURLOPT_USERAGENT, $this->USER_AGENT);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
