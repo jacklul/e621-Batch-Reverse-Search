@@ -63,10 +63,6 @@ E621_API_KEY=
 ;  This is not required but lifts some limitations
 ;SAUCENAO_API_KEY=
 
-; Whenever to search all image sites supported by 'saucenao.com' (default: false)
-;  By default only e621 is searched
-;SAUCENAO_SEARCH_ALL=false
-
 ; Maximum time the script waits for reply per image search (default: 60)
 ;  Set it to higher number on weaker connections or errors like 'no reply from the server'
 ;RETURN_TIMEOUT=60
