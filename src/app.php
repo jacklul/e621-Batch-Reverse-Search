@@ -944,9 +944,9 @@ class App
 
                                     $results = $this->reverseSearchSaucenao($this->PATH_IMAGES . '/' . $entry);
 
-                                    if (isset($results['error']) && $results['error'] === 'ShortLimitReached') {
+                                    if (isset($results['error']) && ($results['error'] === 'ShortLimitReached' || $results['error'] === 'FailedLimitReached')) {
                                         $results = $this->applyCooldown(
-                                            30,
+                                            $results['error'] === 'ShortLimitReached' ? 30 : 60,
                                             $results,
                                             function () use ($entry) {
                                                 return $this->reverseSearchSaucenao($this->PATH_IMAGES . '/' . $entry);
