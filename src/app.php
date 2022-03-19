@@ -900,6 +900,16 @@ class App
 
                                     $results = $this->reverseSearchFuzzySearch($this->PATH_IMAGES . '/' . $entry);
 
+                                    if (isset($results['error']) && $results['error'] === 'ShortLimitReached') {
+                                        $results = $this->applyCooldown(
+                                            60,
+                                            $results,
+                                            function () use ($entry) {
+                                                return $this->reverseSearchFuzzySearch($this->PATH_IMAGES . '/' . $entry);
+                                            }
+                                        );
+                                    }
+        
                                     if ($this->FORCE_MULTI_SEARCH) {
                                         if (isset($results_prev) && isset($service_prev) && $results_prev !== null) {
                                             /** @noinspection SlowArrayOperationsInLoopInspection */
@@ -1579,6 +1589,11 @@ class App
         }
 
         $result = json_decode($output, true);
+
+        $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        if ($http_code === 429 || (isset($result['code']) && $result['code'] === 429)) {
+            return ['error' => 'ShortLimitReached'];
+        }
 
         $matches = [];
         if (isset($result['matches']) && count($result['matches']) > 0) {
